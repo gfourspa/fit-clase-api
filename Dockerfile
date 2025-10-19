@@ -1,5 +1,27 @@
-# Use specific version tag and latest patch
-FROM node:18.19-alpine3.19
+# ============================================
+# Stage 1: Build Stage (compiles TypeScript)
+# ============================================
+FROM node:20-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# ============================================
+# Stage 2: Production Stage (runtime only)
+# ============================================
+FROM node:20-alpine
 
 # Install system dependencies
 RUN apk add --no-cache bash
@@ -12,23 +34,23 @@ RUN addgroup -g 1001 -S nodejs && \
 WORKDIR /app
 RUN chown -R nestjs:nodejs /app
 
-# Copy package files with proper ownership
-COPY --chown=nestjs:nodejs package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-
 # Switch to non-root user
 USER nestjs
 
-# Copy source code with proper ownership
-COPY --chown=nestjs:nodejs . .
+# Copy package files
+COPY --chown=nestjs:nodejs package*.json ./
 
-# Build application
-RUN npm run build
+# Install ONLY production dependencies
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copy built application from builder stage
+COPY --chown=nestjs:nodejs --from=builder /app/dist ./dist
 
 # Expose port
 EXPOSE 4000
 
+# Set environment to production
+ENV NODE_ENV=production
+
 # Use non-root user for runtime
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/main"]

@@ -1,14 +1,12 @@
 services:
   - type: web
     name: fit-clase-api
-    env: node
+    runtime: docker
     plan: free
-    buildCommand: npm install --omit=dev && npm install --no-save @nestjs/cli typescript && NODE_OPTIONS="--max-old-space-size=400" npm run build
-    startCommand: npm run start:prod
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NODE_OPTIONS
-        value: --max-old-space-size=400
       - key: PORT
         value: 4000
