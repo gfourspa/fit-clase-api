@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: fit-clase-api
+    env: node
+    plan: free
+    buildCommand: npm ci --production=false && node --max-old-space-size=460 ./node_modules/.bin/nest build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
