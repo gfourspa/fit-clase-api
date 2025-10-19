@@ -53,4 +53,4 @@ EXPOSE 4000
 ENV NODE_ENV=production
 
 # Use non-root user for runtime
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]
