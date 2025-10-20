@@ -25,8 +25,8 @@ export class Gym {
   @Column({ type: 'varchar', length: 100 })
   contact: string;
 
-  @Column({ type: 'uuid' })
-  ownerId: string;
+  @Column({ type: 'varchar', length: 255 })
+  ownerId: string; // Clerk User ID
 
   @ManyToOne(() => User, (user) => user.ownedGyms)
   @JoinColumn({ name: 'ownerId' })

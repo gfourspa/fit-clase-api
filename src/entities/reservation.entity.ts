@@ -18,8 +18,8 @@ export class Reservation {
   @Column({ type: 'uuid' })
   classId: string;
 
-  @Column({ type: 'uuid' })
-  studentId: string;
+  @Column({ type: 'varchar', length: 255 })
+  studentId: string; // Clerk User ID
 
   @Column({
     type: 'enum',

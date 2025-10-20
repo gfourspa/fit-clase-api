@@ -22,8 +22,8 @@ export class Class {
   @Column({ type: 'uuid' })
   disciplineId: string;
 
-  @Column({ type: 'uuid' })
-  teacherId: string;
+  @Column({ type: 'varchar', length: 255 })
+  teacherId: string; // Clerk User ID
 
   @Column({ type: 'date' })
   date: Date;

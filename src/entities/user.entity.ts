@@ -7,7 +7,7 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Role } from '../common/enums';
@@ -18,8 +18,8 @@ import { Reservation } from './reservation.entity';
 @Entity('users')
 @Index(['email'], { unique: true })
 export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryColumn({ type: 'varchar', length: 255 })
+  id: string; // Clerk User ID (ej: user_xxxxx)
 
   @Column({ type: 'varchar', length: 255 })
   name: string;
