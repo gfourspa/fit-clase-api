@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   UseGuards
 } from '@nestjs/common';
@@ -137,4 +138,17 @@ export class UsersController {
       name: user.name,
     });
   }
+
+  /**
+   * POST /users/:gymId/add-to-gym
+   * Agrega múltiples usuarios a un gimnasio específico
+   */
+  @Post('/:gymId/add-to-gym')
+  @UseGuards(FirebaseAuthGuard)
+  @Roles(Role.OWNER_GYM, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Agregar usuario a gimnasio' })
+  async addUserToGym(@Body() body: { emails: string[] }, @Param('gymId') gymId: string): Promise<{ added: string[]; failed: string[] }> {
+    return this.userService.addUsersToGym(body.emails, gymId);
+  }
+  
 }

@@ -65,21 +65,17 @@ export class UserService {
   /**
    * Asigna automáticamente el rol STUDENT a un nuevo usuario
    * Este método es llamado desde el frontend Flutter después del registro
+   * gymId es opcional - puede ser null para usuarios sin gimnasio asignado
    */
-  async autoAssignStudent(uid: string, email: string, gymId: string): Promise<User> {
-    this.logger.log(`Auto-asignando rol STUDENT a usuario: ${email} en gimnasio: ${gymId}`);
+  async autoAssignStudent(uid: string, email: string, gymId?: string): Promise<User> {
+    this.logger.log(`🎓 Auto-asignando rol STUDENT a usuario: ${email}${gymId ? ` en gimnasio: ${gymId}` : ''}`);
 
     try {
-      // Verificar que el gymId exista (opcional - puedes agregar validación)
-      if (!gymId) {
-        throw new BadRequestException('gymId es requerido para asignar rol STUDENT');
-      }
-
       // Actualizar custom claims en Firebase
       const admin = getFirebaseAdmin();
       await admin.auth().setCustomUserClaims(uid, {
         role: Role.STUDENT,
-        gymId: gymId,
+        gymId: gymId || null,
       });
 
       // Crear o actualizar usuario en la base de datos
@@ -87,27 +83,29 @@ export class UserService {
       
       if (!user) {
         // Crear nuevo usuario
+        this.logger.log(`Creando nuevo usuario STUDENT...`);
         user = this.userRepository.create({
           firebase_uid: uid,
           email: email,
           role: Role.STUDENT,
-          gymId: gymId,
+          gymId: gymId || null,
         });
       } else {
         // Actualizar usuario existente
+        this.logger.log(`Usuario ya existe, actualizando...`);
         user.email = email;
         user.role = Role.STUDENT;
-        user.gymId = gymId;
+        user.gymId = gymId || null;
       }
 
       user = await this.userRepository.save(user);
       
-      this.logger.log(`Usuario ${email} asignado como STUDENT en gimnasio ${gymId}`);
+      this.logger.log(`✅ Rol STUDENT asignado exitosamente a ${email}`);
       
       return user;
     } catch (error) {
-      this.logger.error(`Error auto-asignando rol STUDENT: ${error.message}`);
-      throw new BadRequestException(`Error asignando rol: ${error.message}`);
+      this.logger.error(`❌ Error asignando rol: ${error.message}`, error.stack);
+      throw new BadRequestException(`Error asignando rol`);
     }
   }
 
@@ -243,4 +241,34 @@ export class UserService {
       throw new NotFoundException('Usuario no encontrado');
     }
   }
+
+  /**
+   * Agrega múltiples usuarios a un gimnasio específico
+   */
+
+  async addUsersToGym(emails: string[], gymId: string): Promise<{ added: string[]; failed: string[] }> {
+    const added: string[] = [];
+    const failed: string[] = [];
+
+    for (const email of emails) {
+      try {
+        let user = await this.userRepository.findOne({ where: { email } });
+
+        if (!user) {
+          failed.push(email);
+          this.logger.warn(`Usuario con email ${email} no encontrado`);
+          continue;
+        } else {
+          user.gymId = gymId;
+          await this.userRepository.save(user);
+          added.push(email);
+        }
+      } catch (error) {
+        this.logger.error(`Error al agregar usuario ${email} a gimnasio ${gymId}: ${error.message}`);
+        failed.push(email);
+      }
+    }
+
+    return { added, failed };
+  } 
 }

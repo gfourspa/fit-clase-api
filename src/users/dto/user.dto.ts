@@ -26,9 +26,9 @@ export class AutoAssignStudentDto {
   @IsString()
   email: string;
 
-  @IsString()
+  @IsOptional() 
   @IsUUID()
-  gymId: string;
+  gymId?: string;
 }
 
 /**
