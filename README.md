@@ -313,8 +313,6 @@ Este proyecto está bajo la Licencia MIT. Ver archivo `LICENSE` para más detall
 
 ---
 
-**Desarrollado con ❤️ y ☕ por el equipo de GFOURSPA**
-
 *Transformando ideas en soluciones digitales desde 2023*
 
 </div>

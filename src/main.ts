@@ -4,8 +4,18 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { initializeFirebaseAdmin } from './auth/firebase-admin.config';
 
 async function bootstrap() {
+  // Inicializar Firebase Admin SDK
+  try {
+    initializeFirebaseAdmin();
+    console.log('✅ Firebase Admin SDK inicializado correctamente');
+  } catch (error) {
+    console.error('❌ Error inicializando Firebase Admin SDK:', error.message);
+    process.exit(1);
+  }
+
   const app = await NestFactory.create(AppModule);
 
   // Obtener configuración

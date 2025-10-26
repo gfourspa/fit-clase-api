@@ -1,10 +1,10 @@
 import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ReservationStatus } from '../common/enums';
 import { Class } from './class.entity';
@@ -18,8 +18,8 @@ export class Reservation {
   @Column({ type: 'uuid' })
   classId: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  studentId: string; // Clerk User ID
+  @Column({ type: 'uuid' })
+  studentId: string; // User UUID (Firebase User)
 
   @Column({
     type: 'enum',

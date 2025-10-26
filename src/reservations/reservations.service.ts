@@ -102,7 +102,7 @@ export class ReservationsService {
       throw new ForbiddenException('No puedes cancelar esta reserva');
     }
 
-    if (user.role === Role.ADMIN) {
+    if (user.role === Role.OWNER_GYM) {
       // Verificar que la reserva es de su gimnasio
       const classEntity = await this.classRepository.findOne({
         where: { id: reservation.classId },

@@ -82,7 +82,7 @@ export class ClassesService {
     if (user.role === Role.STUDENT || user.role === Role.TEACHER) {
       // Los estudiantes y profesores solo ven clases de su gimnasio
       queryBuilder.where('class.gymId = :userGymId', { userGymId: user.gymId });
-    } else if (user.role === Role.ADMIN) {
+    } else if (user.role === Role.OWNER_GYM) {
       // Los admins ven clases de los gimnasios que poseen
       queryBuilder.where('gym.ownerId = :userId', { userId: user.id });
     }
@@ -131,7 +131,7 @@ export class ClassesService {
 
     // Verificar permisos
     if (user.role !== Role.SUPER_ADMIN) {
-      if (user.role === Role.ADMIN && classEntity.gym.ownerId !== user.id) {
+      if (user.role === Role.OWNER_GYM && classEntity.gym.ownerId !== user.id) {
         throw new ForbiddenException('No tienes acceso a esta clase');
       }
       if ((user.role === Role.TEACHER || user.role === Role.STUDENT) && classEntity.gymId !== user.gymId) {
@@ -146,11 +146,11 @@ export class ClassesService {
     const classEntity = await this.findOne(id, user);
 
     // Solo admins del gimnasio o super admin pueden editar
-    if (user.role !== Role.SUPER_ADMIN && user.role !== Role.ADMIN) {
+    if (user.role !== Role.SUPER_ADMIN && user.role !== Role.OWNER_GYM) {
       throw new ForbiddenException('Solo los administradores pueden editar clases');
     }
 
-    if (user.role === Role.ADMIN && classEntity.gym.ownerId !== user.id) {
+    if (user.role === Role.OWNER_GYM && classEntity.gym.ownerId !== user.id) {
       throw new ForbiddenException('Solo puedes editar clases de tus gimnasios');
     }
 
@@ -178,11 +178,11 @@ export class ClassesService {
     const classEntity = await this.findOne(id, user);
 
     // Solo admins del gimnasio o super admin pueden eliminar
-    if (user.role !== Role.SUPER_ADMIN && user.role !== Role.ADMIN) {
+    if (user.role !== Role.SUPER_ADMIN && user.role !== Role.OWNER_GYM) {
       throw new ForbiddenException('Solo los administradores pueden eliminar clases');
     }
 
-    if (user.role === Role.ADMIN && classEntity.gym.ownerId !== user.id) {
+    if (user.role === Role.OWNER_GYM && classEntity.gym.ownerId !== user.id) {
       throw new ForbiddenException('Solo puedes eliminar clases de tus gimnasios');
     }
 
@@ -204,7 +204,7 @@ export class ClassesService {
     }
 
     // Verificar permisos adicionales
-    if (user.role === Role.ADMIN && teacher.gymId && user.gymId !== teacher.gymId) {
+    if (user.role === Role.OWNER_GYM && teacher.gymId && user.gymId !== teacher.gymId) {
       const gym = await this.gymRepository.findOne({ where: { id: teacher.gymId } });
       if (!gym || gym.ownerId !== user.id) {
         throw new ForbiddenException('No tienes acceso a las clases de este profesor');

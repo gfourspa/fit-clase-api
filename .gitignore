@@ -56,10 +56,6 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Ignore sensitive configuration files
-WEBHOOK_CONFIGURATION.md
-WEBHOOK_SETUP_GUIDE.md
-CURL_COMMANDS.md
-LOCAL_TESTING_GUIDE.md
-PRODUCTION_QUICKSTART.md
-
+IMPLEMENTATION_SUMMARY.md
+TESTING_ENDPOINTS.md
 

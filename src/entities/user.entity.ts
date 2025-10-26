@@ -1,4 +1,5 @@
 import {
+  BeforeInsert,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -10,6 +11,7 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { Role } from '../common/enums';
 import { Class } from './class.entity';
 import { Gym } from './gym.entity';
@@ -17,20 +19,19 @@ import { Reservation } from './reservation.entity';
 
 @Entity('users')
 @Index(['email'], { unique: true })
+@Index(['firebase_uid'], { unique: true })
 export class User {
-  @PrimaryColumn({ type: 'varchar', length: 255 })
-  id: string; // Clerk User ID (ej: user_xxxxx)
+  @PrimaryColumn({ type: 'uuid' })
+  id: string; // UUID generado automáticamente
 
-  @Column({ type: 'varchar', length: 255 })
-  name: string;
+  @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
+  firebase_uid: string | null; // Firebase User UID
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  name: string | null;
 
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
-
-  // Campo password obsoleto - Ahora usamos Clerk para autenticación
-  // Se mantiene por compatibilidad con registros existentes pero no se usa
-  @Column({ type: 'varchar', length: 255, nullable: true, default: '' })
-  password: string;
 
   @Column({
     type: 'enum',
@@ -40,7 +41,7 @@ export class User {
   role: Role;
 
   @Column({ type: 'uuid', nullable: true })
-  gymId: string;
+  gymId: string | null;
 
   @ManyToOne(() => Gym, (gym) => gym.users, { nullable: true })
   @JoinColumn({ name: 'gymId' })
@@ -63,4 +64,11 @@ export class User {
 
   @DeleteDateColumn({ type: 'timestamp', nullable: true })
   deletedAt: Date;
+
+  @BeforeInsert()
+  generateId() {
+    if (!this.id) {
+      this.id = uuidv4();
+    }
+  }
 }
