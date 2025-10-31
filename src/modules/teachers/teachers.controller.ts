@@ -8,10 +8,10 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ClassesService } from '../classes/classes.service';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 
 @ApiTags('Profesores')
 @Controller('teachers')

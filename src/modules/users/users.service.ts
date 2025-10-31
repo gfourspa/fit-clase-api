@@ -7,8 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { getFirebaseAdmin } from '../auth/firebase-admin.config';
-import { Role } from '../common/enums';
-import { User } from '../entities/user.entity';
+import { Role } from '../../common/enums';
+import { User } from '../../entities/user.entity';
 import type { AssignRoleDto, CreateUserDto } from './dto/user.dto';
 
 /**

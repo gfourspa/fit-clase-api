@@ -1,21 +1,21 @@
 import {
-    Body,
-    Controller,
-    Get,
-    Param,
-    ParseBoolPipe,
-    ParseUUIDPipe,
-    Post,
-    Put,
-    Query,
-    Request,
-    UseGuards
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseBoolPipe,
+  ParseUUIDPipe,
+  Post,
+  Put,
+  Query,
+  Request,
+  UseGuards
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
 import { CreateReservationDto } from './dto/reservation.dto';
 import { ReservationsService } from './reservations.service';
 
@@ -26,7 +26,7 @@ import { ReservationsService } from './reservations.service';
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
-    @Post()
+  @Post()
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Crear una nueva reserva' })
   @ApiResponse({ status: 201, description: 'Reserva creada exitosamente' })
@@ -44,8 +44,8 @@ export class ReservationsController {
     return this.reservationsService.findMyReservations(user);
   }
 
-    @Put(':id/cancel')
-  @Roles(Role.STUDENT)
+  @Put(':id/cancel')
+  @Roles(Role.STUDENT, Role.OWNER_GYM, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Cancelar una reserva' })
   @ApiResponse({ status: 200, description: 'Reserva cancelada exitosamente' })
   cancel(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
@@ -53,8 +53,8 @@ export class ReservationsController {
     return this.reservationsService.cancel(id, user);
   }
 
-    @Put(':classId/students/:studentId/attendance')
-  @Roles(Role.STUDENT, Role.OWNER_GYM, Role.SUPER_ADMIN)
+  @Put(':classId/students/:studentId/attendance')
+  @Roles(Role.OWNER_GYM, Role.SUPER_ADMIN, Role.TEACHER)
   @ApiOperation({ summary: 'Marcar asistencia a clase' })
   @ApiResponse({ status: 200, description: 'Asistencia marcada exitosamente' })
   markAttendance(

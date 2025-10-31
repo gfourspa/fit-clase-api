@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { initializeFirebaseAdmin } from './auth/firebase-admin.config';
+import { initializeFirebaseAdmin } from './modules/auth/firebase-admin.config';
 
 async function bootstrap() {
   // Inicializar Firebase Admin SDK

@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { AuthenticatedUser } from '../auth/firebase-auth.guard';
+import { AuthenticatedUser } from './interfaces';
 
 /**
  * Decorador para obtener el usuario autenticado desde Firebase

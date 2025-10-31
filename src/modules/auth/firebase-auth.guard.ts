@@ -6,17 +6,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { getFirebaseAdmin } from './firebase-admin.config';
-
-/**
- * Interface para el usuario autenticado que se adjunta al request
- */
-export interface AuthenticatedUser {
-  uid: string;
-  email?: string;
-  role?: string;
-  gymId?: string;
-  [key: string]: any;
-}
+import { AuthenticatedUser } from './interfaces';
 
 /**
  * Firebase Authentication Guard

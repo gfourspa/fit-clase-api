@@ -4,14 +4,13 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ClassesModule } from './classes/classes.module';
 import { getDatabaseConfig } from './config/database.config';
-import { DatabaseModule } from './database/database.module';
-import { DisciplinesModule } from './disciplines/disciplines.module';
-import { GymsModule } from './gyms/gyms.module';
-import { ReservationsModule } from './reservations/reservations.module';
-import { TeachersModule } from './teachers/teachers.module';
-import { UsersModule } from './users/users.module';
+import { ClassesModule } from './modules/classes/classes.module';
+import { DisciplinesModule } from './modules/disciplines/disciplines.module';
+import { GymsModule } from './modules/gyms/gyms.module';
+import { ReservationsModule } from './modules/reservations/reservations.module';
+import { TeachersModule } from './modules/teachers/teachers.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -41,7 +40,6 @@ import { UsersModule } from './users/users.module';
     ReservationsModule,
     TeachersModule,
     DisciplinesModule,
-    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

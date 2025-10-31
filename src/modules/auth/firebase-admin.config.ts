@@ -2,7 +2,6 @@ import * as admin from 'firebase-admin';
 
 /**
  * Firebase Admin SDK configuration
- * Configures Firebase Admin using environment variables
  */
 export const initializeFirebaseAdmin = () => {
   if (admin.apps.length === 0) {

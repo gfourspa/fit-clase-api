@@ -1,10 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ReservationStatus, Role } from '../common/enums';
-import { Class } from '../entities/class.entity';
-import { Reservation } from '../entities/reservation.entity';
-import { User } from '../entities/user.entity';
+import { ReservationStatus, Role } from '../../common/enums';
+import { Class } from '../../entities/class.entity';
+import { Reservation } from '../../entities/reservation.entity';
+import { User } from '../../entities/user.entity';
 import { CreateReservationDto } from './dto/reservation.dto';
 
 @Injectable()
@@ -135,17 +135,19 @@ export class ReservationsService {
 
   async markAttendance(classId: string, studentId: string, attended: boolean, user: User): Promise<Reservation> {
     // Solo profesores pueden marcar asistencia
-    if (user.role !== Role.TEACHER) {
-      throw new ForbiddenException('Solo los profesores pueden marcar asistencia');
+    if (user.role === Role.STUDENT) {
+      throw new ForbiddenException('No puedes marcar asistencia');
     }
 
     // Verificar que el profesor esté asignado a esta clase
-    const classEntity = await this.classRepository.findOne({
-      where: { id: classId, teacherId: user.id },
-    });
+    if (user.role === Role.TEACHER) {
+      const classEntity = await this.classRepository.findOne({
+        where: { id: classId, teacherId: user.id },
+      });
 
-    if (!classEntity) {
-      throw new NotFoundException('Clase no encontrada o no estás asignado como profesor');
+      if (!classEntity) {
+        throw new NotFoundException('Clase no encontrada o no estás asignado como profesor');
+      }
     }
 
     const reservation = await this.reservationRepository.findOne({

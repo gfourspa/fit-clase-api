@@ -12,10 +12,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
 import { ClassesService } from './classes.service';
 import { CreateClassDto, FilterClassDto, UpdateClassDto } from './dto/class.dto';
 
@@ -26,12 +26,7 @@ import { CreateClassDto, FilterClassDto, UpdateClassDto } from './dto/class.dto'
 export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 
-  /**
-   * POST /classes
-   * Crear una nueva clase
-   * Solo SUPER_ADMIN y OWNER_GYM pueden crear clases
-   * OWNER_GYM solo puede crear clases en su gimnasio
-   */
+
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.OWNER_GYM)
   @ApiOperation({ summary: 'Crear una nueva clase' })
@@ -41,12 +36,6 @@ export class ClassesController {
     return this.classesService.create(createClassDto, user);
   }
 
-  /**
-   * GET /classes
-   * Listar clases
-   * Cualquier usuario autenticado puede listar clases de su gimnasio
-   * SUPER_ADMIN puede listar todas las clases
-   */
   @Get()
   @ApiOperation({ summary: 'Listar clases con filtros opcionales' })
   @ApiQuery({ name: 'date', required: false, description: 'Filtrar por fecha (YYYY-MM-DD)' })

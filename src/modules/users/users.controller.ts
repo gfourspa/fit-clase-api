@@ -1,21 +1,21 @@
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  UseGuards
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Post,
+    UseGuards
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { AuthenticatedUser } from '../auth/firebase-auth.guard';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { FirebaseUser } from '../auth/firebase-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { User } from '../entities/user.entity';
+import { AuthenticatedUser } from '../auth/interfaces';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { User } from '../../entities/user.entity';
 import { AssignRoleDto, AutoAssignStudentDto } from './dto/user.dto';
 import { UserService } from './users.service';
 

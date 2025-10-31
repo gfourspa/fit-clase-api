@@ -1,11 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Role } from '../common/enums';
-import { Class } from '../entities/class.entity';
-import { Discipline } from '../entities/discipline.entity';
-import { Gym } from '../entities/gym.entity';
-import { User } from '../entities/user.entity';
+import { Role } from '../../common/enums';
+import { Class } from '../../entities/class.entity';
+import { Discipline } from '../../entities/discipline.entity';
+import { Gym } from '../../entities/gym.entity';
+import { User } from '../../entities/user.entity';
 import { CreateClassDto, FilterClassDto, UpdateClassDto } from './dto/class.dto';
 
 @Injectable()
@@ -86,7 +86,6 @@ export class ClassesService {
       // Los admins ven clases de los gimnasios que poseen
       queryBuilder.where('gym.ownerId = :userId', { userId: user.id });
     }
-    // Los SUPER_ADMIN ven todas las clases
 
     // Aplicar filtros adicionales
     if (date) {

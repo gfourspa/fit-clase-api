@@ -6,16 +6,14 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { AuthenticatedUser } from '../../auth/firebase-auth.guard';
+import { AuthenticatedUser } from '../../modules/auth/interfaces';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { Role } from '../enums';
-
-/**
+import { Role } from '../enums'; /**
  * Roles Guard
- * 
+ *
  * Valida que el usuario autenticado tenga uno de los roles requeridos.
  * También maneja la lógica multi-tenant basada en gymId.
- * 
+ *
  * Reglas de acceso:
  * - SUPER_ADMIN: Acceso completo a todo el sistema
  * - OWNER_GYM: Acceso solo a recursos de su gimnasio

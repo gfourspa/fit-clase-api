@@ -1,9 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Role } from '../common/enums';
-import { Gym } from '../entities/gym.entity';
-import { User } from '../entities/user.entity';
+import { Role } from '../../common/enums';
+import { Gym } from '../../entities/gym.entity';
+import { User } from '../../entities/user.entity';
 import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
 
 @Injectable()

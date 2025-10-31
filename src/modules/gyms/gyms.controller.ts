@@ -11,10 +11,10 @@ import {
     UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
 import { GymsService } from './gyms.service';
 
