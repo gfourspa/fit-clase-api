@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseBoolPipe,
   ParseUUIDPipe,
@@ -30,6 +32,7 @@ export class ReservationsController {
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Crear una nueva reserva' })
   @ApiResponse({ status: 201, description: 'Reserva creada exitosamente' })
+  @HttpCode(HttpStatus.CREATED)
   create(@Body() createReservationDto: CreateReservationDto, @Request() req: any) {
     const user = req.user;
     return this.reservationsService.create(createReservationDto, user);
@@ -39,6 +42,7 @@ export class ReservationsController {
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Obtener mis reservas' })
   @ApiResponse({ status: 200, description: 'Lista de reservas del usuario' })
+  @HttpCode(HttpStatus.OK)
   findMyReservations(@Request() req: any) {
     const user = req.user;
     return this.reservationsService.findMyReservations(user);
@@ -48,6 +52,7 @@ export class ReservationsController {
   @Roles(Role.STUDENT, Role.OWNER_GYM, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Cancelar una reserva' })
   @ApiResponse({ status: 200, description: 'Reserva cancelada exitosamente' })
+  @HttpCode(HttpStatus.OK)
   cancel(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const user = req.user;
     return this.reservationsService.cancel(id, user);
@@ -57,6 +62,7 @@ export class ReservationsController {
   @Roles(Role.OWNER_GYM, Role.SUPER_ADMIN, Role.TEACHER)
   @ApiOperation({ summary: 'Marcar asistencia a clase' })
   @ApiResponse({ status: 200, description: 'Asistencia marcada exitosamente' })
+  @HttpCode(HttpStatus.OK)
   markAttendance(
     @Param('classId', ParseUUIDPipe) classId: string,
     @Param('studentId', ParseUUIDPipe) studentId: string,

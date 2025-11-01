@@ -1,14 +1,13 @@
+import { CustomException } from '@/common/exceptions/customs.exceptions';
 import {
-  BadRequestException,
   Injectable,
-  Logger,
-  NotFoundException,
+  Logger
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { getFirebaseAdmin } from '../auth/firebase-admin.config';
 import { Role } from '../../common/enums';
 import { User } from '../../entities/user.entity';
+import { getFirebaseAdmin } from '../auth/firebase-admin.config';
 import type { AssignRoleDto, CreateUserDto } from './dto/user.dto';
 
 /**
@@ -100,12 +99,12 @@ export class UserService {
 
       user = await this.userRepository.save(user);
       
-      this.logger.log(`✅ Rol STUDENT asignado exitosamente a ${email}`);
+      this.logger.log(`Rol STUDENT asignado exitosamente a ${email}`);
       
       return user;
     } catch (error) {
-      this.logger.error(`❌ Error asignando rol: ${error.message}`, error.stack);
-      throw new BadRequestException(`Error asignando rol`);
+      this.logger.error(`Error asignando rol: ${error.message}`, error.stack);
+      throw CustomException.BadRequest(`Error asignando rol`);
     }
   }
 
@@ -113,30 +112,48 @@ export class UserService {
    * Busca un usuario por su Firebase UID
    */
   async findByFirebaseUid(firebase_uid: string): Promise<User | null> {
-    return this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: { firebase_uid },
       relations: ['gym'],
     });
+
+    if (!user) {
+      return null;
+    }
+
+    return user;
   }
 
   /**
    * Busca un usuario por su ID interno
    */
   async findById(id: string): Promise<User | null> {
-    return this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: { id },
       relations: ['gym'],
     });
+
+    if (!user) {
+      throw CustomException.NotFound('Usuario no encontrado');
+    }
+
+    return user;
   }
 
   /**
    * Obtiene todos los usuarios de un gimnasio específico
    */
   async findByGymId(gymId: string): Promise<User[]> {
-    return this.userRepository.find({
+    const users = await this.userRepository.find({
       where: { gymId },
       relations: ['gym'],
     });
+
+    if (!users || users.length === 0) {
+      throw CustomException.NotFound('No se encontraron usuarios para el gimnasio especificado');
+    }
+
+    return users;
   }
 
   /**
@@ -166,12 +183,12 @@ export class UserService {
 
     // Validar que el rol sea válido
     if (!Object.values(Role).includes(role)) {
-      throw new BadRequestException('Rol inválido');
+      throw CustomException.BadRequest('Rol inválido');
     }
 
     // Validar que si no es SUPER_ADMIN, debe tener gymId
     if (role !== Role.SUPER_ADMIN && !gymId) {
-      throw new BadRequestException(
+      throw CustomException.BadRequest(
         'Los usuarios que no son SUPER_ADMIN deben tener un gymId asignado'
       );
     }
@@ -179,7 +196,7 @@ export class UserService {
     // Buscar el usuario por Firebase UID
     const user = await this.findByFirebaseUid(uid);
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw CustomException.NotFound('Usuario no encontrado');
     }
 
     try {
@@ -201,7 +218,7 @@ export class UserService {
       return updatedUser;
     } catch (error) {
       this.logger.error(`Error asignando rol: ${error.message}`);
-      throw new BadRequestException('Error al asignar rol');
+      throw CustomException.BadRequest('Error al asignar rol');
     }
   }
 
@@ -212,7 +229,7 @@ export class UserService {
     // Verificar que no exista un usuario con el mismo firebase_uid
     const existingUser = await this.findByFirebaseUid(createUserDto.firebase_uid);
     if (existingUser) {
-      throw new BadRequestException('Usuario ya existe');
+      throw CustomException.Conflict('Usuario ya existe');
     }
 
     const user = this.userRepository.create({
@@ -226,10 +243,17 @@ export class UserService {
   /**
    * Obtiene todos los usuarios (solo para SUPER_ADMIN)
    */
+    
   async findAll(): Promise<User[]> {
-    return this.userRepository.find({
+    const users = await this.userRepository.find({
       relations: ['gym'],
     });
+
+    if (!users || users.length === 0) {
+      throw CustomException.NotFound('No se encontraron usuarios');
+    }
+
+    return users;
   }
 
   /**
@@ -238,7 +262,7 @@ export class UserService {
   async remove(id: string): Promise<void> {
     const result = await this.userRepository.softDelete(id);
     if (result.affected === 0) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw CustomException.NotFound('Usuario no encontrado');
     }
   }
 
@@ -271,4 +295,5 @@ export class UserService {
 
     return { added, failed };
   } 
+
 }

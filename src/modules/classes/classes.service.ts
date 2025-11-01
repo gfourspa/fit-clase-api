@@ -1,5 +1,6 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CustomException } from 'src/common/exceptions/customs.exceptions';
 import { Repository } from 'typeorm';
 import { Role } from '../../common/enums';
 import { Class } from '../../entities/class.entity';
@@ -27,33 +28,33 @@ export class ClassesService {
     // Verificar que el gimnasio existe y el usuario tiene permisos
     const gym = await this.gymRepository.findOne({ where: { id: gymId } });
     if (!gym) {
-      throw new NotFoundException('Gimnasio no encontrado');
+      throw CustomException.NotFound('Gimnasio no encontrado');
     }
 
     if (user.role !== Role.SUPER_ADMIN && user.gymId !== gymId && gym.ownerId !== user.id) {
-      throw new ForbiddenException('No tienes permisos para crear clases en este gimnasio');
+      throw CustomException.Unauthorized('No tienes permisos para crear clases en este gimnasio');
     }
 
     // Verificar disciplina
     const discipline = await this.disciplineRepository.findOne({ where: { id: disciplineId } });
     if (!discipline) {
-      throw new NotFoundException('Disciplina no encontrada');
+      throw CustomException.NotFound('Disciplina no encontrada');
     }
 
     // Verificar profesor
     const teacher = await this.userRepository.findOne({ where: { id: teacherId, role: Role.TEACHER } });
     if (!teacher) {
-      throw new NotFoundException('Profesor no encontrado');
+      throw CustomException.NotFound('Profesor no encontrado');
     }
 
     // Verificar que el profesor pertenece al gimnasio
     if (teacher.gymId !== gymId) {
-      throw new BadRequestException('El profesor no pertenece a este gimnasio');
+      throw CustomException.BadRequest('El profesor no pertenece a este gimnasio');
     }
 
     // Validar horarios
     if (startTime >= endTime) {
-      throw new BadRequestException('La hora de inicio debe ser menor a la hora de fin');
+      throw CustomException.BadRequest('La hora de inicio debe ser menor a la hora de fin');
     }
 
     const classEntity = this.classRepository.create({
@@ -101,7 +102,7 @@ export class ClassesService {
         // Verificar que el usuario tiene acceso a este gimnasio
         const gym = await this.gymRepository.findOne({ where: { id: gymId } });
         if (!gym || (user.gymId !== gymId && gym.ownerId !== user.id)) {
-          throw new ForbiddenException('No tienes acceso a este gimnasio');
+          throw CustomException.Unauthorized('No tienes acceso a este gimnasio');
         }
       }
       queryBuilder.andWhere('class.gymId = :gymId', { gymId });
@@ -125,16 +126,16 @@ export class ClassesService {
     });
 
     if (!classEntity) {
-      throw new NotFoundException('Clase no encontrada');
+      throw CustomException.NotFound('Clase no encontrada');
     }
 
     // Verificar permisos
     if (user.role !== Role.SUPER_ADMIN) {
       if (user.role === Role.OWNER_GYM && classEntity.gym.ownerId !== user.id) {
-        throw new ForbiddenException('No tienes acceso a esta clase');
+        throw CustomException.Unauthorized('No tienes acceso a esta clase');
       }
       if ((user.role === Role.TEACHER || user.role === Role.STUDENT) && classEntity.gymId !== user.gymId) {
-        throw new ForbiddenException('No tienes acceso a esta clase');
+        throw CustomException.Unauthorized('No tienes acceso a esta clase');
       }
     }
 
@@ -146,11 +147,11 @@ export class ClassesService {
 
     // Solo admins del gimnasio o super admin pueden editar
     if (user.role !== Role.SUPER_ADMIN && user.role !== Role.OWNER_GYM) {
-      throw new ForbiddenException('Solo los administradores pueden editar clases');
+      throw CustomException.Unauthorized('Solo los administradores pueden editar clases');
     }
 
     if (user.role === Role.OWNER_GYM && classEntity.gym.ownerId !== user.id) {
-      throw new ForbiddenException('Solo puedes editar clases de tus gimnasios');
+      throw CustomException.Unauthorized('Solo puedes editar clases de tus gimnasios');
     }
 
     // Validaciones adicionales si se actualizan ciertos campos
@@ -159,13 +160,13 @@ export class ClassesService {
         where: { id: updateClassDto.teacherId, role: Role.TEACHER },
       });
       if (!teacher || teacher.gymId !== classEntity.gymId) {
-        throw new BadRequestException('Profesor inválido para este gimnasio');
+        throw CustomException.BadRequest('Profesor inválido para este gimnasio');
       }
     }
 
     if (updateClassDto.startTime && updateClassDto.endTime) {
       if (updateClassDto.startTime >= updateClassDto.endTime) {
-        throw new BadRequestException('La hora de inicio debe ser menor a la hora de fin');
+        throw CustomException.BadRequest('La hora de inicio debe ser menor a la hora de fin');
       }
     }
 
@@ -178,11 +179,11 @@ export class ClassesService {
 
     // Solo admins del gimnasio o super admin pueden eliminar
     if (user.role !== Role.SUPER_ADMIN && user.role !== Role.OWNER_GYM) {
-      throw new ForbiddenException('Solo los administradores pueden eliminar clases');
+      throw CustomException.Unauthorized('Solo los administradores pueden eliminar clases');
     }
 
     if (user.role === Role.OWNER_GYM && classEntity.gym.ownerId !== user.id) {
-      throw new ForbiddenException('Solo puedes eliminar clases de tus gimnasios');
+      throw CustomException.Unauthorized('Solo puedes eliminar clases de tus gimnasios');
     }
 
     await this.classRepository.remove(classEntity);
@@ -191,7 +192,7 @@ export class ClassesService {
   async findByTeacher(teacherId: string, user: User): Promise<Class[]> {
     // Verificar que el usuario puede ver las clases de este profesor
     if (user.role === Role.TEACHER && user.id !== teacherId) {
-      throw new ForbiddenException('Solo puedes ver tus propias clases');
+      throw CustomException.Unauthorized('Solo puedes ver tus propias clases');
     }
 
     const teacher = await this.userRepository.findOne({
@@ -206,7 +207,7 @@ export class ClassesService {
     if (user.role === Role.OWNER_GYM && teacher.gymId && user.gymId !== teacher.gymId) {
       const gym = await this.gymRepository.findOne({ where: { id: teacher.gymId } });
       if (!gym || gym.ownerId !== user.id) {
-        throw new ForbiddenException('No tienes acceso a las clases de este profesor');
+        throw CustomException.Unauthorized('No tienes acceso a las clases de este profesor');
       }
     }
 
@@ -216,4 +217,5 @@ export class ClassesService {
       order: { date: 'ASC', startTime: 'ASC' },
     });
   }
+
 }

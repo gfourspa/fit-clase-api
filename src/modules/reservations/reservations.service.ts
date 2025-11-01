@@ -1,4 +1,5 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { CustomException } from '@/common/exceptions/customs.exceptions';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ReservationStatus, Role } from '../../common/enums';
@@ -21,7 +22,7 @@ export class ReservationsService {
 
     // Solo estudiantes pueden hacer reservas
     if (user.role !== Role.STUDENT) {
-      throw new BadRequestException('Solo los estudiantes pueden hacer reservas');
+      throw CustomException.Unauthorized('Solo los estudiantes pueden hacer reservas');
     }
 
     // Verificar que la clase existe
@@ -31,12 +32,12 @@ export class ReservationsService {
     });
 
     if (!classEntity) {
-      throw new NotFoundException('Clase no encontrada');
+      throw CustomException.NotFound('Clase no encontrada');
     }
 
     // Verificar que el estudiante pertenece al gimnasio de la clase
     if (user.gymId !== classEntity.gymId) {
-      throw new BadRequestException('No puedes reservar clases de otros gimnasios');
+      throw CustomException.Unauthorized('No puedes reservar clases de otros gimnasios');
     }
 
     // Verificar que la clase no esté en el pasado
@@ -44,7 +45,7 @@ export class ReservationsService {
     const classDateTime = new Date(`${classEntity.date}T${classEntity.startTime}`);
     
     if (classDateTime <= now) {
-      throw new BadRequestException('No puedes reservar clases pasadas');
+      throw CustomException.BadRequest('No puedes reservar clases pasadas');
     }
 
     // Verificar que el usuario no tenga ya una reserva para esta clase
@@ -57,7 +58,7 @@ export class ReservationsService {
     });
 
     if (existingReservation) {
-      throw new BadRequestException('Ya tienes una reserva para esta clase');
+      throw CustomException.Conflict('Ya tienes una reserva para esta clase');
     }
 
     // Verificar cupos disponibles
@@ -66,7 +67,7 @@ export class ReservationsService {
     );
 
     if (activeReservations.length >= classEntity.capacity) {
-      throw new BadRequestException('No hay cupos disponibles para esta clase');
+      throw CustomException.BadRequest('No hay cupos disponibles para esta clase');
     }
 
     // Crear la reserva
@@ -80,11 +81,18 @@ export class ReservationsService {
   }
 
   async findMyReservations(user: User): Promise<Reservation[]> {
-    return this.reservationRepository.find({
+
+    const reservations = await this.reservationRepository.find({
       where: { studentId: user.id },
       relations: ['class', 'class.gym', 'class.discipline', 'class.teacher'],
       order: { createdAt: 'DESC' },
     });
+
+    if (!reservations || reservations.length === 0) {
+      throw CustomException.NotFound('No tienes reservas');
+    }
+
+    return reservations;
   }
 
   async cancel(id: string, user: User): Promise<Reservation> {
@@ -94,12 +102,12 @@ export class ReservationsService {
     });
 
     if (!reservation) {
-      throw new NotFoundException('Reserva no encontrada');
+      throw CustomException.NotFound('Reserva no encontrada');
     }
 
     // Verificar que es el dueño de la reserva o un admin
     if (user.role === Role.STUDENT && reservation.studentId !== user.id) {
-      throw new ForbiddenException('No puedes cancelar esta reserva');
+      throw CustomException.Unauthorized('No puedes cancelar esta reserva');
     }
 
     if (user.role === Role.OWNER_GYM) {
@@ -110,13 +118,13 @@ export class ReservationsService {
       });
       
       if (classEntity && classEntity.gym.ownerId !== user.id) {
-        throw new ForbiddenException('No puedes cancelar reservas de otros gimnasios');
+        throw CustomException.Unauthorized('No puedes cancelar reservas de otros gimnasios');
       }
     }
 
     // Verificar que la reserva esté activa
     if (reservation.status !== ReservationStatus.RESERVED) {
-      throw new BadRequestException('Solo se pueden cancelar reservas activas');
+      throw CustomException.BadRequest('Solo se pueden cancelar reservas activas');
     }
 
     // Verificar que no sea muy tarde para cancelar (ejemplo: no se puede cancelar 2 horas antes)
@@ -126,7 +134,7 @@ export class ReservationsService {
     const hoursDifference = timeDifference / (1000 * 60 * 60);
 
     if (hoursDifference < 2 && user.role === Role.STUDENT) {
-      throw new BadRequestException('No puedes cancelar la reserva con menos de 2 horas de anticipación');
+      throw CustomException.BadRequest('No puedes cancelar la reserva con menos de 2 horas de anticipación');
     }
 
     reservation.status = ReservationStatus.CANCELED;
@@ -136,7 +144,7 @@ export class ReservationsService {
   async markAttendance(classId: string, studentId: string, attended: boolean, user: User): Promise<Reservation> {
     // Solo profesores pueden marcar asistencia
     if (user.role === Role.STUDENT) {
-      throw new ForbiddenException('No puedes marcar asistencia');
+      throw CustomException.Unauthorized('No puedes marcar asistencia');
     }
 
     // Verificar que el profesor esté asignado a esta clase
@@ -146,7 +154,7 @@ export class ReservationsService {
       });
 
       if (!classEntity) {
-        throw new NotFoundException('Clase no encontrada o no estás asignado como profesor');
+        throw CustomException.NotFound('Clase no encontrada o no estás asignado como profesor');
       }
     }
 
@@ -159,7 +167,7 @@ export class ReservationsService {
     });
 
     if (!reservation) {
-      throw new NotFoundException('Reserva no encontrada');
+      throw CustomException.NotFound('Reserva no encontrada');
     }
 
     reservation.status = attended ? ReservationStatus.ATTENDED : ReservationStatus.MISSED;

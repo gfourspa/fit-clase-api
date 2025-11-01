@@ -9,7 +9,6 @@ import { ClassesModule } from './modules/classes/classes.module';
 import { DisciplinesModule } from './modules/disciplines/disciplines.module';
 import { GymsModule } from './modules/gyms/gyms.module';
 import { ReservationsModule } from './modules/reservations/reservations.module';
-import { TeachersModule } from './modules/teachers/teachers.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -38,7 +37,6 @@ import { UsersModule } from './modules/users/users.module';
     GymsModule,
     ClassesModule,
     ReservationsModule,
-    TeachersModule,
     DisciplinesModule,
   ],
   controllers: [AppController],

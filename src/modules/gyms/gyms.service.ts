@@ -1,4 +1,5 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { CustomException } from '@/common/exceptions/customs.exceptions';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../../common/enums';
@@ -25,7 +26,7 @@ export class GymsService {
   async findAll(user: User): Promise<Gym[]> {
     // Solo super admin puede ver todos los gimnasios
     if (user.role !== Role.SUPER_ADMIN) {
-      throw new ForbiddenException('Solo el super administrador puede ver todos los gimnasios');
+      throw CustomException.Unauthorized('Solo el super administrador puede ver todos los gimnasios');
     }
 
     return this.gymRepository.find({
@@ -40,12 +41,12 @@ export class GymsService {
     });
 
     if (!gym) {
-      throw new NotFoundException('Gimnasio no encontrado');
+      throw CustomException.NotFound('Gimnasio no encontrado');
     }
 
     // Verificar permisos
     if (user.role !== Role.SUPER_ADMIN && user.gymId !== gym.id && gym.ownerId !== user.id) {
-      throw new ForbiddenException('No tienes acceso a este gimnasio');
+      throw CustomException.Unauthorized('No tienes acceso a este gimnasio');
     }
 
     return gym;
@@ -56,7 +57,11 @@ export class GymsService {
 
     // Solo el dueño o super admin pueden editar
     if (user.role !== Role.SUPER_ADMIN && gym.ownerId !== user.id) {
-      throw new ForbiddenException('Solo el dueño del gimnasio puede editarlo');
+      throw CustomException.Unauthorized('Solo el dueño del gimnasio puede editarlo');
+    }
+
+    if(!gym){
+      throw CustomException.NotFound('Gimnasio no encontrado');
     }
 
     Object.assign(gym, updateGymDto);
@@ -68,7 +73,11 @@ export class GymsService {
 
     // Solo el dueño o super admin pueden eliminar
     if (user.role !== Role.SUPER_ADMIN && gym.ownerId !== user.id) {
-      throw new ForbiddenException('Solo el dueño del gimnasio puede eliminarlo');
+      throw CustomException.Unauthorized('Solo el dueño del gimnasio puede eliminarlo');
+    }
+
+    if(!gym){
+      throw CustomException.NotFound('Gimnasio no encontrado');
     }
 
     await this.gymRepository.remove(gym);

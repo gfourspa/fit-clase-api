@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
-import { Role } from '../../common/enums';
+import { Role } from '../../../common/enums';
 
 /**
  * DTO para asignar rol a un usuario

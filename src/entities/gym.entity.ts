@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Class } from './class.entity';
+import { Discipline } from './discipline.entity';
 import { User } from './user.entity';
 
 @Entity('gyms')
@@ -37,6 +38,9 @@ export class Gym {
 
   @OneToMany(() => User, (user) => user.gym)
   users: User[];
+
+  @OneToMany(() => Discipline, (discipline) => discipline.gym)
+  disciplines: Discipline[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;

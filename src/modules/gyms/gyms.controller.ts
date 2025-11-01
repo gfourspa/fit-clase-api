@@ -1,20 +1,22 @@
 import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    Param,
-    ParseUUIDPipe,
-    Patch,
-    Post,
-    Request,
-    UseGuards,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CreateGymDto, UpdateGymDto } from './dto/gym.dto';
 import { GymsService } from './gyms.service';
 
@@ -29,6 +31,7 @@ export class GymsController {
   @Roles(Role.SUPER_ADMIN, Role.OWNER_GYM)
   @ApiOperation({ summary: 'Crear un nuevo gimnasio' })
   @ApiResponse({ status: 201, description: 'Gimnasio creado exitosamente' })
+  @HttpCode(HttpStatus.CREATED)
   create(@Body() createGymDto: CreateGymDto, @Request() req: any) {
     const user = req.user;
     return this.gymsService.create(createGymDto, user);
@@ -37,6 +40,7 @@ export class GymsController {
   @Get()
   @ApiOperation({ summary: 'Obtener todos los gimnasios' })
   @ApiResponse({ status: 200, description: 'Lista de gimnasios obtenida exitosamente' })
+  @HttpCode(HttpStatus.OK)
   findAll(@Request() req: any) {
     const user = req.user;
     return this.gymsService.findAll(user);
@@ -46,6 +50,7 @@ export class GymsController {
   @ApiOperation({ summary: 'Obtener gimnasio por ID' })
   @ApiResponse({ status: 200, description: 'Gimnasio obtenido exitosamente' })
   @ApiResponse({ status: 404, description: 'Gimnasio no encontrado' })
+  @HttpCode(HttpStatus.OK)
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const user = req.user;
     return this.gymsService.findOne(id, user);
@@ -55,6 +60,7 @@ export class GymsController {
   @Roles(Role.SUPER_ADMIN, Role.OWNER_GYM)
   @ApiOperation({ summary: 'Actualizar gimnasio' })
   @ApiResponse({ status: 200, description: 'Gimnasio actualizado exitosamente' })
+  @HttpCode(HttpStatus.OK)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateGymDto: UpdateGymDto,
@@ -67,7 +73,8 @@ export class GymsController {
   @Delete(':id')
   @Roles(Role.SUPER_ADMIN, Role.OWNER_GYM)
   @ApiOperation({ summary: 'Eliminar gimnasio' })
-  @ApiResponse({ status: 200, description: 'Gimnasio eliminado exitosamente' })
+  @ApiResponse({ status: 204, description: 'Gimnasio eliminado exitosamente' })
+  @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const user = req.user;
     return this.gymsService.remove(id, user);

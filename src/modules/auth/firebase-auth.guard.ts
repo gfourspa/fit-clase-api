@@ -2,9 +2,10 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
-  UnauthorizedException,
+  Logger
 } from '@nestjs/common';
 import { Request } from 'express';
+import { CustomException } from 'src/common/exceptions/customs.exceptions';
 import { getFirebaseAdmin } from './firebase-admin.config';
 import { AuthenticatedUser } from './interfaces';
 
@@ -16,12 +17,15 @@ import { AuthenticatedUser } from './interfaces';
  */
 @Injectable()
 export class FirebaseAuthGuard implements CanActivate {
+
+  private readonly logger = new Logger(FirebaseAuthGuard.name);
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {
-      throw new UnauthorizedException('Token de autenticación requerido');
+      throw CustomException.Unauthorized('Token de autenticación requerido');
     }
 
     try {
@@ -36,9 +40,9 @@ export class FirebaseAuthGuard implements CanActivate {
       } as AuthenticatedUser;
 
       return true;
-    } catch (error) {
-      console.error('Error verificando token de Firebase:', error.message);
-      throw new UnauthorizedException('Token de autenticación inválido');
+    } catch (error) { 
+      this.logger.error('Error verificando token de Firebase:', error.message);
+      throw CustomException.Unauthorized('Token de autenticación inválido');
     }
   }
 

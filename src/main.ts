@@ -10,9 +10,9 @@ async function bootstrap() {
   // Inicializar Firebase Admin SDK
   try {
     initializeFirebaseAdmin();
-    console.log('✅ Firebase Admin SDK inicializado correctamente');
+    console.log('Firebase Admin SDK inicializado correctamente');
   } catch (error) {
-    console.error('❌ Error inicializando Firebase Admin SDK:', error.message);
+    console.error('Error inicializando Firebase Admin SDK:', error.message);
     process.exit(1);
   }
 
@@ -57,7 +57,6 @@ async function bootstrap() {
     .addTag('Gimnasios', 'CRUD de gimnasios')
     .addTag('Clases', 'CRUD de clases deportivas')
     .addTag('Reservas', 'Gestión de reservas de clases')
-    .addTag('Profesores', 'Endpoints específicos para profesores')
     .addTag('Salud', 'Endpoints de estado del servidor')
     .addBearerAuth()
     .build();

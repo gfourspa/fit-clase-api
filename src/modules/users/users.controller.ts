@@ -1,21 +1,21 @@
 import {
-    Body,
-    Controller,
-    Get,
-    HttpCode,
-    HttpStatus,
-    Param,
-    Post,
-    UseGuards
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  UseGuards
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
-import { FirebaseUser } from '../auth/firebase-user.decorator';
-import { AuthenticatedUser } from '../auth/interfaces';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { User } from '../../entities/user.entity';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
+import { FirebaseUser } from '../auth/firebase-user.decorator';
+import { AuthenticatedUser } from '../auth/interfaces';
 import { AssignRoleDto, AutoAssignStudentDto } from './dto/user.dto';
 import { UserService } from './users.service';
 
@@ -31,11 +31,6 @@ import { UserService } from './users.service';
 export class UsersController {
   constructor(private readonly userService: UserService) {}
 
-  /**
-   * POST /users/auto-assign-student
-   * Asigna automáticamente rol STUDENT a un nuevo usuario desde Flutter
-   * Protegido con FirebaseAuthGuard
-   */
   @Post('auto-assign-student')
   @UseGuards(FirebaseAuthGuard)
   @HttpCode(HttpStatus.OK)
@@ -75,11 +70,7 @@ export class UsersController {
     };
   }
 
-  /**
-   * POST /users/assign-role
-   * Asigna un rol específico a un usuario
-   * Solo accesible para SUPER_ADMIN
-   */
+
   @Post('assign-role')
   @UseGuards(FirebaseAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
@@ -94,10 +85,6 @@ export class UsersController {
     return this.userService.assignRole(assignRoleDto);
   }
 
-  /**
-   * GET /users/me
-   * Retorna los datos del usuario autenticado
-   */
   @Get('me')
   @UseGuards(FirebaseAuthGuard)
   @ApiOperation({ 
@@ -105,32 +92,27 @@ export class UsersController {
     description: 'Retorna los datos del usuario a partir del token Firebase' 
   })
   @ApiResponse({ status: 200, description: 'Datos del usuario obtenidos exitosamente' })
+  @HttpCode(HttpStatus.OK)
   async getMyProfile(@FirebaseUser() user: AuthenticatedUser): Promise<User | null> {
     return this.userService.findByFirebaseUid(user.uid);
   }
 
-  /**
-   * GET /users
-   * Lista todos los usuarios del sistema
-   * Solo SUPER_ADMIN puede ver todos los usuarios
-   */
+
   @Get()
   @UseGuards(FirebaseAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Listar todos los usuarios' })
   @ApiResponse({ status: 200, description: 'Lista de usuarios obtenida exitosamente' })
+  @HttpCode(HttpStatus.OK)
   async getAllUsers(): Promise<User[]> {
     return this.userService.findAll();
   }
 
-  /**
-   * POST /users/sync
-   * Sincroniza el usuario actual con la base de datos
-   * Método auxiliar para desarrollo/debugging
-   */
+
   @Post('sync')
   @UseGuards(FirebaseAuthGuard)
   @ApiOperation({ summary: 'Sincronizar usuario con BD' })
+  @HttpCode(HttpStatus.OK)
   async syncUser(@FirebaseUser() user: AuthenticatedUser): Promise<User> {
     return this.userService.syncUser({
       uid: user.uid,
@@ -139,16 +121,15 @@ export class UsersController {
     });
   }
 
-  /**
-   * POST /users/:gymId/add-to-gym
-   * Agrega múltiples usuarios a un gimnasio específico
-   */
+
   @Post('/:gymId/add-to-gym')
   @UseGuards(FirebaseAuthGuard)
   @Roles(Role.OWNER_GYM, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Agregar usuario a gimnasio' })
+  @HttpCode(HttpStatus.OK)
   async addUserToGym(@Body() body: { emails: string[] }, @Param('gymId') gymId: string): Promise<{ added: string[]; failed: string[] }> {
     return this.userService.addUsersToGym(body.emails, gymId);
   }
+
   
 }
