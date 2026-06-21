@@ -18,7 +18,6 @@ import { Gym } from './gym.entity';
 import { Reservation } from './reservation.entity';
 
 @Entity('users')
-@Index(['email'], { unique: true })
 @Index(['firebase_uid'], { unique: true })
 export class User {
   @PrimaryColumn({ type: 'uuid' })
@@ -30,8 +29,8 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   name: string | null;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
-  email: string;
+  @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
+  email: string | null;
 
   @Column({
     type: 'enum',
