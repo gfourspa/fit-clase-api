@@ -73,7 +73,7 @@ export class UsersController {
     
     return {
       uid: user.firebase_uid || '',
-      email: user.email,
+      email: user.email || '',
       role: user.role,
       gymId: user.gymId || '',
     };
