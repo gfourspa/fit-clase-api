@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { Role } from '../../../common/enums';
 
 /**
@@ -6,10 +6,10 @@ import { Role } from '../../../common/enums';
  */
 export class AssignRoleDto {
   @IsString()
-  uid: string;
+  uid!: string;
 
   @IsEnum(Role)
-  role: Role;
+  role!: Role;
 
   @IsOptional()
   @IsUUID()
@@ -18,13 +18,12 @@ export class AssignRoleDto {
 
 /**
  * DTO para auto-asignar rol STUDENT desde Flutter
+ * El uid y email se ignoran del body; se extraen del token Firebase para evitar suplantación.
  */
 export class AutoAssignStudentDto {
+  @IsOptional()
   @IsString()
-  uid: string;
-
-  @IsString()
-  email: string;
+  uid?: string;
 
   @IsOptional() 
   @IsUUID()
@@ -36,10 +35,10 @@ export class AutoAssignStudentDto {
  */
 export class CreateUserDto {
   @IsString()
-  firebase_uid: string;
+  firebase_uid!: string;
 
-  @IsString()
-  email: string;
+  @IsEmail()
+  email!: string;
 
   @IsOptional()
   @IsString()

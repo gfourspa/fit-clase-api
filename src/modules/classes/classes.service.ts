@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CustomException } from 'src/common/exceptions/customs.exceptions';
+import { CustomException } from '@/common/exceptions/customs.exceptions';
 import { Repository } from 'typeorm';
 import { Role } from '../../common/enums';
 import { Class } from '../../entities/class.entity';

@@ -50,15 +50,18 @@ export class UsersController {
       }
     }
   })
-  async autoAssignStudent(@Body() autoAssignDto: AutoAssignStudentDto): Promise<{
+  async autoAssignStudent(
+    @Body() autoAssignDto: AutoAssignStudentDto,
+    @FirebaseUser() currentUser: AuthenticatedUser,
+  ): Promise<{
     uid: string;
     email: string;
     role: string;
     gymId: string;
   }> {
     const user = await this.userService.autoAssignStudent(
-      autoAssignDto.uid,
-      autoAssignDto.email,
+      currentUser.uid,
+      currentUser.email,
       autoAssignDto.gymId
     );
     

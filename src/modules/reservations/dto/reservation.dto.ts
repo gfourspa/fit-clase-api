@@ -1,6 +1,6 @@
-import { IsString } from 'class-validator';
+import { IsUUID } from 'class-validator';
 
 export class CreateReservationDto {
-  @IsString()
-  classId: string;
+  @IsUUID()
+  classId!: string;
 }

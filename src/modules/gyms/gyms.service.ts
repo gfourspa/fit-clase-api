@@ -60,10 +60,6 @@ export class GymsService {
       throw CustomException.Unauthorized('Solo el dueño del gimnasio puede editarlo');
     }
 
-    if(!gym){
-      throw CustomException.NotFound('Gimnasio no encontrado');
-    }
-
     Object.assign(gym, updateGymDto);
     return this.gymRepository.save(gym);
   }
@@ -74,10 +70,6 @@ export class GymsService {
     // Solo el dueño o super admin pueden eliminar
     if (user.role !== Role.SUPER_ADMIN && gym.ownerId !== user.id) {
       throw CustomException.Unauthorized('Solo el dueño del gimnasio puede eliminarlo');
-    }
-
-    if(!gym){
-      throw CustomException.NotFound('Gimnasio no encontrado');
     }
 
     await this.gymRepository.remove(gym);

@@ -1,327 +1,178 @@
 # FitClase API 🏋️‍♀️
 
 > **API REST profesional** para gestión de gimnasios, clases deportivas y reservas.  
-> Construida con **NestJS + TypeORM + PostgreSQL + Clerk Authentication**
+> Construida con **NestJS + TypeORM + PostgreSQL**
 
 [![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Clerk](https://img.shields.io/badge/Clerk-6C47FF?style=for-the-badge&logo=clerk&logoColor=white)](https://clerk.com/)
 
 **🌐 Producción**: [https://fit-clase-api.onrender.com](https://fit-clase-api.onrender.com)  
-**📖 Documentación API**: [https://fit-clase-api.onrender.com/api/docs](https://fit-clase-api.onrender.com/api/docs)
+**📖 Documentación API**: disponible solo en entornos no-productivos (`NODE_ENV !== 'production'`)
 
 ---
 
 ## 🚀 Características
 
-- ✅ **Autenticación con Clerk** - Gestión moderna de usuarios y sesiones
-- 🔐 **Autorización por roles** - SUPER_ADMIN, GYM_OWNER, TEACHER, STUDENT
 - 📦 **CRUD completo** - Gimnasios, clases, reservas y disciplinas
 - ✨ **Validaciones robustas** - class-validator + class-transformer
 - 📚 **Documentación automática** - Swagger/OpenAPI
-- 🛡️ **Seguridad integrada** - Helmet, CORS, Rate Limiting
-- 🐘 **PostgreSQL** - Base de datos relacional con TypeORM
-- 🔄 **Sincronización automática** - Webhooks de Clerk para usuarios
-- 🐳 **Docker Ready** - Multi-stage build optimizado
-- ☁️ **Deploy automatizado** - Render.com con CI/CD
+***FitClase API***
 
-## 🏗️ Arquitectura
+API REST para la gestión de gimnasios, clases y reservas. Implementada con NestJS, autenticación basada en Firebase Auth, persistencia en PostgreSQL (TypeORM) y observabilidad via OpenTelemetry (SigNoz).
 
-```
-src/
-├── auth/              # Autenticación con Clerk y webhooks
-├── common/            # Enums, guards, decorators compartidos
-├── config/            # Configuraciones (DB)
-├── database/          # Módulo de base de datos
-├── entities/          # Entidades TypeORM
-├── gyms/              # Módulo de gimnasios
-├── classes/           # Módulo de clases deportivas
-├── reservations/      # Módulo de reservas
-├── teachers/          # Módulo específico para profesores
-├── disciplines/       # Módulo de disciplinas deportivas
-├── app.module.ts      # Módulo principal
-└── main.ts           # Punto de entrada
-```
+**Project Overview**
+- **Stack:** Node.js 20, NestJS, TypeORM, PostgreSQL, Firebase Auth, SigNoz (OTLP)
+- **Propósito:** Sistema de reservas de clases deportivas por gimnasio, multi-tenant por `gymId`.
 
-## 📋 Requisitos
+**Principales Características**
+- **Autenticación:** Firebase IdToken (Bearer) con sincronización de usuarios en PostgreSQL.
+- **Autorización:** Roles (`SUPER_ADMIN`, `OWNER_GYM`, `TEACHER`, `STUDENT`) con `@Roles()` y `RolesGuard` (RBAC).
+- **Validación:** DTOs + `class-validator` y `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`.
+- **Errores:** Filtro global `AllExceptionsFilter` que retorna estructura uniforme.
+- **Observabilidad:** OpenTelemetry exportando a SigNoz (OTLP HTTP).
+- **Seguridad:** `helmet()` (CSP personalizado), CORS configurado por entorno, rate limiting global con `ThrottlerGuard` (100 req/min). Swagger UI deshabilitado en producción.
+- **Logging:** Middleware global que registra cada request (método, path, status, duración).
 
-- **Node.js** >= 18.x
-- **PostgreSQL** >= 13.x
-- **Docker** (opcional, para desarrollo)
-- **Cuenta Clerk** ([clerk.com](https://clerk.com)) - Plan gratuito disponible
-- **npm** o **yarn**
+**Estructura / Módulos Principales**
+- **Auth:** `src/modules/auth` — inicializa Firebase Admin y provee guardas (`FirebaseAuthGuard`).
+- **Users:** `src/modules/users` — sincronización con Firebase, asignación de roles.
+- **Gyms:** `src/modules/gyms` — CRUD de gimnasios.
+- **Classes:** `src/modules/classes` — CRUD y búsqueda de clases.
+- **Reservations:** `src/modules/reservations` — creación/cancelación de reservas, marcar asistencia.
+- **Disciplines:** `src/modules/disciplines` — CRUD de disciplinas.
 
-## 🛠️ Instalación
+**Endpoints Principales (resumen)**
+- **Autenticación**
+  - `POST /api/v1/*` — Todos los endpoints protegidos usan `Authorization: Bearer <FirebaseIdToken>` donde aplica.
 
-### 1. Clonar el repositorio
+- **Usuarios**
+  - `POST /api/v1/users/auto-assign-student` — Asigna rol STUDENT. El `uid` y `email` se extraen del token Firebase (no del body) para evitar suplantación. Autenticado.
+  - `POST /api/v1/users/assign-role` — Permite a SUPER_ADMIN asignar roles a otros usuarios. RolesGuard requerido.
+  - `GET  /api/v1/users/me` — Recupera perfil del usuario autenticado.
 
-```bash
-git clone https://github.com/gfourspa/fit-clase-api.git
-cd fit-clase-api
+- **Gimnasios (Gyms)**
+  - `POST   /api/v1/gyms` — Crear gimnasio (ownerId asignado automáticamente).
+  - `GET    /api/v1/gyms` — Listar gimnasios (SUPER_ADMIN).
+  - `GET    /api/v1/gyms/:id` — Obtener gimnasio.
+  - `PUT    /api/v1/gyms/:id` — Actualizar gimnasio (owner o super admin).
+  - `DELETE /api/v1/gyms/:id` — Eliminar gimnasio (owner o super admin).
 
-# Instalar dependencias
-npm install
-```
+- **Clases (Classes)**
+  - `POST /api/v1/classes` — Crear clase (SUPER_ADMIN, OWNER_GYM).
+  - `GET  /api/v1/classes` — Listar clases con filtros: `date`, `disciplineId`, `gymId`, `page`, `limit`.
+  - `GET  /api/v1/classes/:id` — Obtener detalles de una clase.
+  - `PUT  /api/v1/classes/:id` — Actualizar clase.
+  - `DELETE /api/v1/classes/:id` — Eliminar clase.
 
-### 2. Configurar base de datos
+- **Reservas (Reservations)**
+  - `POST /api/v1/reservations` — Crear reserva (STUDENT). Body: `{ classId }` (UUID).
+  - `GET  /api/v1/reservations/my-reservations` — Obtener reservas del usuario autenticado.
+  - `PUT  /api/v1/reservations/:id/cancel` — Cancelar reserva (propietario o OWNER_GYM o SUPER_ADMIN).
+  - `PUT  /api/v1/reservations/:classId/students/:studentId/attendance` — Marcar asistencia (OWNER_GYM, SUPER_ADMIN, TEACHER).
 
-**Opción A: PostgreSQL Local**
-```sql
-CREATE DATABASE fitclase;
-```
+- **Disciplinas (Disciplines)**
+  - Endpoints CRUD estándar en `src/modules/disciplines`.
 
-**Opción B: Base de datos en la nube**
-- [Neon](https://neon.tech/) (Recomendado, gratis)
-- [Supabase](https://supabase.com/)
-- [Railway](https://railway.app/)
+Para detalles exactos y ejemplos de request/response consulte los controladores en `src/modules/*/*.controller.ts` o la documentación Swagger en `/api/docs` cuando la app esté ejecutando.
 
-### 3. Configurar Clerk
+**Autenticación y Roles**
+- El sistema utiliza Firebase Authentication. Los tokens se verifican con `FirebaseAuthGuard` y se sincroniza la información del usuario en la tabla `users`.
+- Roles y acceso multi-tenant se administran en `RolesGuard` (se verifica `gymId` del usuario frente a parámetros/body/query del request).
+- Nota de seguridad importante: actualmente el aislamiento por `gymId` se implementa en la lógica de aplicación; no hay políticas RLS en la base de datos. Se recomienda implementar RLS en PostgreSQL para defensa en profundidad.
 
-1. Crear cuenta en [clerk.com](https://clerk.com)
-2. Crear nueva aplicación
-3. Obtener las claves en **API Keys**:
-   - `Publishable key` → `CLERK_PUBLISHABLE_KEY`
-   - `Secret key` → `CLERK_SECRET_KEY`
-4. Configurar roles en **User & Authentication** → **Metadata**
-
-### 4. Variables de entorno
-
-Crear archivo `.env` en la raíz:
-
-```env
-# Base de datos
-DATABASE_URL="postgresql://user:password@host:5432/fitclase"
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=your_password
-DB_NAME=fitclase
-DB_SSL=false  # true para producción (Neon, Render, etc.)
-
-# Clerk Authentication
-CLERK_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxx
-CLERK_SECRET_KEY=sk_test_xxxxxxxxxxxxx
-CLERK_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
-
-# API
-PORT=4000
-NODE_ENV=development
-CORS_ORIGIN=http://localhost:3000
-```
-
-### 5. Ejecutar la aplicación
-
-```bash
-# Modo desarrollo (con hot-reload)
-npm run start:dev
-
-# Modo producción
-npm run build
-npm run start:prod
-
-# Con Docker
-docker-compose up -d
-```
-
-La API estará disponible en: **http://localhost:4000**
-
-## 📚 Documentación API
-
-Una vez ejecutada la aplicación, accede a:
-
-- **Swagger UI**: http://localhost:4000/api/docs
-- **Health Check**: http://localhost:4000/api/v1/health
-
-## 🔐 Gestión de Usuarios
-
-Los usuarios se gestionan completamente a través de **Clerk**:
-
-
-### Producción
-Los usuarios se sincronizan automáticamente vía webhooks de Clerk.
-
-Ver configuración: `WEBHOOK_SETUP_GUIDE.md` o `WEBHOOK_QUICKSTART.md`
-
-## 🌐 Endpoints Principales
-
-### Autenticación
-```http
-POST /api/v1/webhooks/clerk  # Webhook de Clerk (sincronización automática)
-```
-
-> **Nota**: La autenticación se maneja completamente por Clerk en el frontend.
-> El backend valida los tokens JWT de Clerk automáticamente.
-
-### Gimnasios
-```http
-GET    /api/v1/gyms         # Listar gimnasios (Super Admin)
-POST   /api/v1/gyms         # Crear gimnasio
-GET    /api/v1/gyms/:id     # Obtener gimnasio específico
-PATCH  /api/v1/gyms/:id     # Actualizar gimnasio
-DELETE /api/v1/gyms/:id     # Eliminar gimnasio
-```
-
-### Clases
-```http
-GET    /api/v1/classes                    # Listar clases con filtros
-POST   /api/v1/classes                    # Crear clase
-GET    /api/v1/classes/:id                # Obtener clase específica
-PATCH  /api/v1/classes/:id                # Actualizar clase
-DELETE /api/v1/classes/:id                # Eliminar clase
-```
-
-### Reservas
-```http
-POST   /api/v1/reservations               # Crear reserva
-GET    /api/v1/reservations/me            # Mis reservas
-DELETE /api/v1/reservations/:id           # Cancelar reserva
-PUT    /api/v1/reservations/classes/:id/attendance  # Marcar asistencia
-```
-
-### Profesores
-```http
-GET    /api/v1/teachers/:id/classes       # Clases de un profesor
-```
-
-## 👥 Roles y Permisos
-
-Los roles se asignan en **Clerk Dashboard** → **Users** → Seleccionar usuario → **Metadata** → `publicMetadata`:
+**Estructura uniforme de errores**
+Todas las respuestas de error siguen la misma estructura JSON (viene del filtro global):
 
 ```json
 {
-  "role": "GYM_OWNER"
+  "success": false,
+  "statusCode": 404,
+  "timestamp": "2026-04-17T12:00:00.000Z",
+  "path": "/recurso/id",
+  "message": "Mensaje descriptivo del error"
 }
 ```
 
-### Roles disponibles:
+**Validación**
+- `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`.
+- Errores de validación devuelven `400` con `message` siendo un array de mensajes (colección de constraints).
 
-| Rol | Descripción | Permisos |
-|-----|-------------|----------|
-| **SUPER_ADMIN** | Administrador global | Acceso total al sistema |
-| **GYM_OWNER** | Dueño de gimnasio | Gestionar su gimnasio, clases y profesores |
-| **TEACHER** | Profesor/Instructor | Ver sus clases, marcar asistencia |
-| **STUDENT** | Estudiante/Cliente | Reservar clases, ver sus reservas |
+**Seguridad y CORS**
+- `helmet()` activo con una política CSP personalizada (permitiendo recursos de Swagger CDN).
+- CORS configurado mediante la variable `CORS_ORIGIN` (lista separada por comas). En producción, asegúrese de especificar dominios concretos.
+- Rate limiting: `ThrottlerGuard` registrado globalmente via `APP_GUARD` — 100 requests/minuto por IP en todos los endpoints.
+- Swagger UI (`/api/docs`) solo disponible cuando `NODE_ENV !== 'production'`.
 
-## 🔧 Funcionalidades Destacadas
+**Observabilidad**
+- OpenTelemetry integrado (archivo `src/tracing.ts`) y se exporta a SigNoz/OTLP.
+- Variables relevantes: `OTEL_SERVICE_NAME` y `OTEL_EXPORTER_OTLP_ENDPOINT`.
+- Middleware de logging registra cada request con método, ruta, status y duración.
 
-### Validación de Reservas
-- ✅ Verificación de cupos disponibles
-- ✅ Un estudiante solo puede reservar una clase una vez
-- ✅ No se permiten reservas de clases pasadas
-- ✅ Restricciones de cancelación (2 horas antes)
+**Base de Datos**
+- PostgreSQL con TypeORM (`entities` en `src/config/entities`): `User`, `Gym`, `Class`, `Reservation`, `Discipline`.
+- Configuración en `src/config/database.config.ts` y variables `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL`.
+- `synchronize` solo activo en `development`.
 
-### Seguridad
-- 🔐 JWT tokens con expiración configurable
-- 🛡️ Rate limiting (100 requests/minuto)
-- 🔒 Helmet para headers de seguridad
-- ✅ Validación estricta de datos de entrada
+**Variables de Entorno (resumen)**
+- Firebase: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+- DB: `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL`
+- Server: `PORT`, `NODE_ENV`, `CORS_ORIGIN`
+- Observabilidad: `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`
 
-### Filtros y Búsquedas
-- 📅 Filtrar clases por fecha, disciplina, gimnasio
-- 📊 Paginación en listados
-- 🔍 Búsquedas optimizadas con QueryBuilder
+Consulte `.env.example` para la lista completa y ejemplos.
 
-## 🧪 Testing
+**Ejecución local**
+- Requisitos: Node.js 20, npm
+- Instalar dependencias:
 
 ```bash
-# Tests unitarios
-npm run test
-
-# Tests e2e
-npm run test:e2e
-
-# Cobertura de código
-npm run test:cov
-
-# Tests en modo watch
-npm run test:watch
+npm install
 ```
 
-## 📦 Tecnologías Utilizadas
+- Variables de entorno: copiar `.env.example` a `.env` y ajustar valores.
 
-### Backend Framework
-- **NestJS** 10.x - Framework Node.js progresivo
-- **TypeScript** 5.x - Tipado estático
+- Modo desarrollo (hot-reload):
 
-### Base de Datos
-- **PostgreSQL** 13+ - Base de datos relacional
-- **TypeORM** 0.3.x - ORM para TypeScript/JavaScript
+```bash
+npm run start:dev
+```
 
-### Autenticación y Seguridad
-- **Clerk** - Autenticación moderna y gestión de usuarios
-- **Helmet** - Headers de seguridad HTTP
-- **CORS** - Control de acceso entre orígenes
-- **Rate Limiting** - Throttler de NestJS
+- Build y producción:
 
-### Validación y Documentación
-- **class-validator** - Validación de DTOs
-- **class-transformer** - Transformación de objetos
-- **Swagger/OpenAPI** - Documentación automática
+```bash
+npm run build
+npm run start:prod
+```
 
-### DevOps
-- **Docker** - Contenedorización
-- **Docker Compose** - Orquestación local
-- **Render.com** - Plataforma de deployment
+- Swagger UI (documentación, solo en desarrollo): `http://localhost:4000/api/docs` (ajustar puerto si aplica).
 
+**Docker**
+- Imagen base definida en `Dockerfile` (usa `node:20-alpine`).
+- `docker-compose.yml` disponible para orquestar servicios si aplica.
 
-### Configurar Webhooks de Clerk
+**Tests**
+- Ejecutar tests unitarios/e2e con:
 
-1. En **Clerk Dashboard** → **Webhooks** → **Add Endpoint**
-2. URL: `https://tu-api.onrender.com/api/v1/webhooks/clerk`
-3. Eventos: `user.created`, `user.updated`, `user.deleted`
-4. Copiar **Signing Secret** y agregarlo como `CLERK_WEBHOOK_SECRET`
+```bash
+npm test
+npm run test:e2e
+```
 
+**Buenas prácticas y recomendaciones**
+- Añadir RLS en PostgreSQL para reforzar aislamiento multi-tenant.
+- Evitar exponer `FIREBASE_PRIVATE_KEY` en repos remotos; use secretos en el entorno de despliegue.
+- Mantener `OTEL_EXPORTER_OTLP_ENDPOINT` apuntando a SigNoz/collector en staging/producción.
+- Añadir response DTOs o interceptores de serialización para evitar exponer campos internos de entidades.
 
+**Dónde mirar en el código**
+- `src/main.ts` — arranque, CORS, helmet, validation pipe y filtro global.
+- `src/common/filters/http-exception.filter.ts` — filtro de excepciones global.
+- `src/common/middleware/logger.middleware.ts` — middleware de logging.
+- `src/modules` — controladores, servicios y DTOs por dominio.
+- `src/tracing.ts` — inicialización de OpenTelemetry (importar antes de `main.ts`).
 
-## 🤝 Contribuir
-
-Las contribuciones son bienvenidas. Para cambios importantes:
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add: AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver archivo `LICENSE` para más detalles.
-
-## 📞 Soporte
-
-¿Necesitas ayuda? Tenemos varias opciones:
-
-- � **Email**: soporte@gfourspa.com
-- 💬 **GitHub Issues**: [Reportar problema](https://github.com/gfourspa/fit-clase-api/issues)
-- 📚 **Documentación**: Revisa las guías en el repositorio
-- 🌐 **Website**: [gfourspa.cL](https://gfourspa.cL)
-
-## 👨‍💻 Desarrollado por
-
-<div align="center">
-
-### **GFOURSPA** 🚀
-
-*Soluciones tecnológicas innovadoras para tu negocio*
-
-[![GitHub](https://img.shields.io/badge/GitHub-gfourspa-181717?style=for-the-badge&logo=github)](https://github.com/gfourspa)
-[![Website](https://img.shields.io/badge/Website-gfourspa.com-0078D4?style=for-the-badge&logo=google-chrome&logoColor=white)](https://gfourspa.com)
-
-**Especialidades**: Desarrollo Web • APIs REST • Cloud Computing • Automatización
-
----
-
-*Transformando ideas en soluciones digitales desde 2023*
-
-</div>
-
----
-
-<div align="center">
-
-**© 2024 GFOURSPA. Todos los derechos reservados.**
-
-</div>
+**Licencia**
+- Proyecto marcado como privado por `package.json` (UNLICENSED). Cambiar según necesidad.
 

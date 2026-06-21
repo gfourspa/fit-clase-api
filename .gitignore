@@ -58,4 +58,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Ignore sensitive configuration files
 IMPLEMENTATION_SUMMARY.md
 TESTING_ENDPOINTS.md
+LOCAL_TESTING_GUIDE.md
+postman/
+scripts/
 

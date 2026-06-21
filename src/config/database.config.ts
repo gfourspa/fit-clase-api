@@ -15,6 +15,6 @@ export const getDatabaseConfig = (
   synchronize: configService.get('NODE_ENV') === 'development',
   logging: configService.get('NODE_ENV') === 'development',
   ssl: configService.get('DB_SSL') === 'true' 
-    ? { rejectUnauthorized: false } 
+    ? { rejectUnauthorized: true } 
     : false,
 });
