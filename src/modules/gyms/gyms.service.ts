@@ -12,12 +12,20 @@ export class GymsService {
   constructor(
     @InjectRepository(Gym)
     private gymRepository: Repository<Gym>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
-  async create(createGymDto: CreateGymDto, ownerId: string): Promise<Gym> {
+  async create(createGymDto: CreateGymDto, firebaseUid: string): Promise<Gym> {
+    // Resolve the Firebase UID to the database owner id
+    const owner = await this.userRepository.findOne({ where: { firebase_uid: firebaseUid } });
+    if (!owner) {
+      throw CustomException.NotFound('Usuario no encontrado. Asegúrese de estar registrado en el sistema.');
+    }
+
     const gym = this.gymRepository.create({
       ...createGymDto,
-      ownerId,
+      ownerId: owner.id,
     });
 
     return this.gymRepository.save(gym);

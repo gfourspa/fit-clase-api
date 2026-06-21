@@ -70,14 +70,7 @@ export class UserService {
     this.logger.log(`🎓 Auto-asignando rol STUDENT a usuario: ${email}${gymId ? ` en gimnasio: ${gymId}` : ''}`);
 
     try {
-      // Actualizar custom claims en Firebase
-      const admin = getFirebaseAdmin();
-      await admin.auth().setCustomUserClaims(uid, {
-        role: Role.STUDENT,
-        gymId: gymId || null,
-      });
-
-      // Crear o actualizar usuario en la base de datos
+      // Crear o actualizar usuario en la base de datos primero para obtener el id
       let user = await this.findByFirebaseUid(uid);
       
       if (!user) {
@@ -98,12 +91,22 @@ export class UserService {
       }
 
       user = await this.userRepository.save(user);
+
+      // Actualizar custom claims en Firebase incluyendo el id de BD
+      const admin = getFirebaseAdmin();
+      await admin.auth().setCustomUserClaims(uid, {
+        id: user.id,
+        role: Role.STUDENT,
+        gymId: gymId || null,
+      });
       
       this.logger.log(`Rol STUDENT asignado exitosamente a ${email}`);
       
       return user;
     } catch (error) {
-      this.logger.error(`Error asignando rol: ${error.message}`, error.stack);
+      const msg = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error asignando rol: ${msg}`, stack);
       throw CustomException.BadRequest(`Error asignando rol`);
     }
   }
@@ -200,9 +203,10 @@ export class UserService {
     }
 
     try {
-      // Actualizar custom claims en Firebase
+      // Actualizar custom claims en Firebase incluyendo el id de BD
       const admin = getFirebaseAdmin();
       await admin.auth().setCustomUserClaims(uid, {
+        id: user.id,
         role,
         gymId: role === Role.SUPER_ADMIN ? null : gymId,
       });
@@ -217,7 +221,8 @@ export class UserService {
       
       return updatedUser;
     } catch (error) {
-      this.logger.error(`Error asignando rol: ${error.message}`);
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error asignando rol: ${msg}`);
       throw CustomException.BadRequest('Error al asignar rol');
     }
   }
@@ -288,7 +293,8 @@ export class UserService {
           added.push(email);
         }
       } catch (error) {
-        this.logger.error(`Error al agregar usuario ${email} a gimnasio ${gymId}: ${error.message}`);
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Error al agregar usuario ${email} a gimnasio ${gymId}: ${msg}`);
         failed.push(email);
       }
     }

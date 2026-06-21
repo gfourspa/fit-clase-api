@@ -1,16 +1,16 @@
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-  Request,
-  UseGuards,
+    Body,
+    Controller,
+    Delete,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    ParseUUIDPipe,
+    Patch,
+    Post,
+    Request,
+    UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -34,7 +34,7 @@ export class GymsController {
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createGymDto: CreateGymDto, @Request() req: any) {
     const user = req.user;
-    return this.gymsService.create(createGymDto, user);
+    return this.gymsService.create(createGymDto, user.uid);
   }
 
   @Get()

@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  UnauthorizedException,
   UseGuards
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -59,9 +60,14 @@ export class UsersController {
     role: string;
     gymId: string;
   }> {
+    const email = currentUser.email;
+    if (typeof email !== 'string' || !email) {
+      throw new UnauthorizedException('Email no disponible en el token de autenticacion');
+    }
+
     const user = await this.userService.autoAssignStudent(
       currentUser.uid,
-      currentUser.email,
+      email,
       autoAssignDto.gymId
     );
     
