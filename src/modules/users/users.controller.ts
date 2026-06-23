@@ -127,6 +127,7 @@ export class UsersController {
       uid: user.uid,
       email: user.email,
       name: user.name,
+      role: user.role,
     });
   }
 

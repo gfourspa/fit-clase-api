@@ -1,7 +1,7 @@
 import { CustomException } from '@/common/exceptions/customs.exceptions';
 import {
-  Injectable,
-  Logger
+    Injectable,
+    Logger
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -33,6 +33,7 @@ export class UserService {
     uid: string;
     email?: string;
     name?: string;
+    role?: string;
   }): Promise<User> {
     let user = await this.findByFirebaseUid(firebaseUser.uid);
 
@@ -42,7 +43,7 @@ export class UserService {
         firebase_uid: firebaseUser.uid,
         email: firebaseUser.email,
         name: firebaseUser.name,
-        role: Role.STUDENT, // Rol por defecto
+        role: (firebaseUser.role as Role) || Role.STUDENT,
       });
       
       user = await this.userRepository.save(user);
