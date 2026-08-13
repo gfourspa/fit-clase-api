@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.5] - 2026-06-22
 
-### Fixed
-- ++ version
+### Changed
+- Se actualiza la versión del paquete a 0.1.5.
+
+### Notes
+- Cambio de versión semántico sin cambios funcionales en el código.
 
 ## [0.1.4] - 2026-06-22
 
