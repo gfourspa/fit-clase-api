@@ -1,21 +1,24 @@
 import { Transform } from 'class-transformer';
 import {
-    IsDateString,
-    IsNumber,
-    IsOptional,
-    IsPositive,
-    IsString,
-    Matches,
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Matches,
+  Max,
+  Min,
 } from 'class-validator';
 
 export class CreateClassDto {
-  @IsString()
+  @IsUUID()
   gymId: string;
 
-  @IsString()
+  @IsUUID()
   disciplineId: string;
 
-  @IsString()
+  @IsUUID()
   teacherId: string;
 
   @IsDateString()
@@ -40,11 +43,11 @@ export class CreateClassDto {
 }
 
 export class UpdateClassDto {
-  @IsString()
+  @IsUUID()
   @IsOptional()
   disciplineId?: string;
 
-  @IsString()
+  @IsUUID()
   @IsOptional()
   teacherId?: string;
 
@@ -79,20 +82,23 @@ export class FilterClassDto {
   date?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   disciplineId?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   gymId?: string;
 
   @IsOptional()
   @IsNumber()
   @Transform(({ value }) => parseInt(value))
+  @Min(1)
   page?: number = 1;
 
   @IsOptional()
   @IsNumber()
   @Transform(({ value }) => parseInt(value))
+  @Min(1)
+  @Max(100)
   limit?: number = 10;
 }

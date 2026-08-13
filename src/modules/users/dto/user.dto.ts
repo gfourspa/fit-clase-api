@@ -1,4 +1,13 @@
-import { IsEmail, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { Role } from '../../../common/enums';
 
 /**
@@ -6,6 +15,7 @@ import { Role } from '../../../common/enums';
  */
 export class AssignRoleDto {
   @IsString()
+  @MaxLength(255)
   uid!: string;
 
   @IsEnum(Role)
@@ -19,15 +29,22 @@ export class AssignRoleDto {
 /**
  * DTO para auto-asignar rol STUDENT desde Flutter
  * El uid y email se ignoran del body; se extraen del token Firebase para evitar suplantación.
+ * La membresía al gimnasio se obtiene de una invitación previamente creada por OWNER_GYM/SUPER_ADMIN.
  */
 export class AutoAssignStudentDto {
-  @IsOptional()
-  @IsString()
-  uid?: string;
-
-  @IsOptional() 
   @IsUUID()
-  gymId?: string;
+  invitationToken!: string;
+}
+
+/**
+ * DTO para agregar usuarios a un gimnasio por email
+ */
+export class AddUsersToGymDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsEmail({}, { each: true })
+  @MaxLength(255, { each: true })
+  emails!: string[];
 }
 
 /**
@@ -35,13 +52,16 @@ export class AutoAssignStudentDto {
  */
 export class CreateUserDto {
   @IsString()
+  @MaxLength(255)
   firebase_uid!: string;
 
   @IsEmail()
+  @MaxLength(255)
   email!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   name?: string;
 
   @IsOptional()

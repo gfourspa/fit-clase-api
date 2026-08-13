@@ -11,3 +11,10 @@ export enum ReservationStatus {
   ATTENDED = 'ATTENDED',
   MISSED = 'MISSED',
 }
+
+export enum InvitationStatus {
+  PENDING = 'PENDING',
+  USED = 'USED',
+  EXPIRED = 'EXPIRED',
+  CANCELED = 'CANCELED',
+}

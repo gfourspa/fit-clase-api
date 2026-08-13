@@ -2,23 +2,34 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
-  Logger
+  Logger,
 } from '@nestjs/common';
+import { InjectEntityManager } from '@nestjs/typeorm';
 import { Request } from 'express';
-import { CustomException } from 'src/common/exceptions/customs.exceptions';
+import { EntityManager } from 'typeorm';
+import { CustomException } from '@/common/exceptions/customs.exceptions';
+import { User } from '../../entities/user.entity';
 import { getFirebaseAdmin } from './firebase-admin.config';
 import { AuthenticatedUser } from './interfaces';
 
 /**
  * Firebase Authentication Guard
- * 
- * Verifica el token de Firebase Auth y adjunta el usuario decodificado al request.
+ *
+ * Verifica el token de Firebase Auth y adjunta el usuario autoritativo del request.
+ * El usuario se carga desde PostgreSQL usando el uid de Firebase como clave;
+ * el token solo se usa para autenticar la identidad, no para autorizar roles
+ * o membresías de gimnasio.
+ *
  * El token debe enviarse en el header Authorization: Bearer <token>
  */
 @Injectable()
 export class FirebaseAuthGuard implements CanActivate {
-
   private readonly logger = new Logger(FirebaseAuthGuard.name);
+
+  constructor(
+    @InjectEntityManager()
+    private readonly entityManager: EntityManager,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -31,16 +42,27 @@ export class FirebaseAuthGuard implements CanActivate {
     try {
       const admin = getFirebaseAdmin();
       const decodedToken = await admin.auth().verifyIdToken(token);
-      
-      // Adjuntar el usuario decodificado al request
-      (request as any).user = {
-        ...decodedToken,
-        role: decodedToken.role,
-        gymId: decodedToken.gymId,
-      } as AuthenticatedUser;
+
+      // PostgreSQL es la fuente autoritativa para rol y membresía de gimnasio.
+      const dbUser = await this.entityManager.findOne(User, {
+        where: { firebase_uid: decodedToken.uid },
+      });
+
+      const user: AuthenticatedUser = {
+        uid: decodedToken.uid,
+        id: dbUser?.id,
+        email: dbUser?.email ?? decodedToken.email,
+        name: dbUser?.name ?? decodedToken.name,
+        role: dbUser?.role ?? undefined,
+        gymId: dbUser?.gymId ?? undefined,
+        iat: decodedToken.iat,
+        exp: decodedToken.exp,
+      };
+
+      (request as any).user = user;
 
       return true;
-    } catch (error) { 
+    } catch (error) {
       this.logger.error('Error verificando token de Firebase:', error.message);
       throw CustomException.Unauthorized('Token de autenticación inválido');
     }

@@ -1,21 +1,22 @@
 import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    HttpCode,
-    HttpStatus,
-    Param,
-    Patch,
-    Post,
-    Query,
-    UseGuards
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
-    ApiBearerAuth,
-    ApiOperation,
-    ApiResponse,
-    ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums';
@@ -25,15 +26,19 @@ import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { FirebaseUser } from '../auth/firebase-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces';
 import { DisciplinesService } from './disciplines.service';
-import { CreateDisciplineDto, FilterDisciplineDto, UpdateDisciplineDto } from './dto/discipline.dto';
-
+import {
+  CreateDisciplineDto,
+  FilterDisciplineDto,
+  UpdateDisciplineDto,
+} from './dto/discipline.dto';
+import { DisciplineResponseDto } from './dto/discipline-response.dto';
 
 /**
  * Disciplines Controller
- * 
+ *
  * Maneja los endpoints CRUD de disciplinas deportivas.
  * Las disciplinas están asociadas a un gimnasio específico.
- * 
+ *
  */
 @ApiTags('Disciplinas')
 @Controller('disciplines')
@@ -53,7 +58,8 @@ export class DisciplinesController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Crear nueva disciplina',
-    description: 'Crea una nueva disciplina asociada a un gimnasio. Solo OWNER_GYM y SUPER_ADMIN.',
+    description:
+      'Crea una nueva disciplina asociada a un gimnasio. Solo OWNER_GYM y SUPER_ADMIN.',
   })
   @ApiResponse({
     status: 201,
@@ -74,8 +80,12 @@ export class DisciplinesController {
   async create(
     @Body() createDisciplineDto: CreateDisciplineDto,
     @FirebaseUser() user: AuthenticatedUser,
-  ): Promise<Discipline> {
-    return this.disciplinesService.create(createDisciplineDto,user);
+  ): Promise<DisciplineResponseDto> {
+    const discipline = await this.disciplinesService.create(
+      createDisciplineDto,
+      user,
+    );
+    return DisciplineResponseDto.fromEntity(discipline);
   }
 
   /**
@@ -86,7 +96,8 @@ export class DisciplinesController {
   @Get()
   @ApiOperation({
     summary: 'Listar todas las disciplinas',
-    description: 'Obtiene todas las disciplinas con filtros opcionales (gymId, name)',
+    description:
+      'Obtiene todas las disciplinas con filtros opcionales (gymId, name)',
   })
   @ApiResponse({
     status: 200,
@@ -96,8 +107,11 @@ export class DisciplinesController {
   async findAll(
     @Query() filters: FilterDisciplineDto,
     @FirebaseUser() user: AuthenticatedUser,
-  ): Promise<Discipline[]> {
-    return this.disciplinesService.findAll(filters,user);
+  ): Promise<DisciplineResponseDto[]> {
+    const disciplines = await this.disciplinesService.findAll(filters, user);
+    return disciplines.map((discipline) =>
+      DisciplineResponseDto.fromEntity(discipline),
+    );
   }
 
   /**
@@ -115,12 +129,20 @@ export class DisciplinesController {
     description: 'Disciplina encontrada',
   })
   @ApiResponse({
+    status: 403,
+    description: 'Acceso denegado',
+  })
+  @ApiResponse({
     status: 404,
     description: 'Disciplina no encontrada',
   })
   @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id') id: string): Promise<Discipline> {
-    return this.disciplinesService.findOne(id);
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @FirebaseUser() user: AuthenticatedUser,
+  ): Promise<DisciplineResponseDto> {
+    const discipline = await this.disciplinesService.findOne(id, user);
+    return DisciplineResponseDto.fromEntity(discipline);
   }
 
   /**
@@ -137,9 +159,19 @@ export class DisciplinesController {
     status: 200,
     description: 'Disciplinas del gimnasio obtenidas exitosamente',
   })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso denegado',
+  })
   @HttpCode(HttpStatus.OK)
-  async findByGym(@Param('gymId') gymId: string): Promise<Discipline[]> {
-    return this.disciplinesService.findByGymId(gymId);
+  async findByGym(
+    @Param('gymId', ParseUUIDPipe) gymId: string,
+    @FirebaseUser() user: AuthenticatedUser,
+  ): Promise<DisciplineResponseDto[]> {
+    const disciplines = await this.disciplinesService.findByGymId(gymId, user);
+    return disciplines.map((discipline) =>
+      DisciplineResponseDto.fromEntity(discipline),
+    );
   }
 
   /**
@@ -152,7 +184,8 @@ export class DisciplinesController {
   @Roles(Role.OWNER_GYM, Role.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Actualizar disciplina',
-    description: 'Actualiza los datos de una disciplina. Solo OWNER_GYM y SUPER_ADMIN.',
+    description:
+      'Actualiza los datos de una disciplina. Solo OWNER_GYM y SUPER_ADMIN.',
   })
   @ApiResponse({
     status: 200,
@@ -172,11 +205,16 @@ export class DisciplinesController {
   })
   @HttpCode(HttpStatus.OK)
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateDisciplineDto: UpdateDisciplineDto,
     @FirebaseUser() user: AuthenticatedUser,
-  ): Promise<Discipline> {
-    return this.disciplinesService.update(id, updateDisciplineDto, user);
+  ): Promise<DisciplineResponseDto> {
+    const discipline = await this.disciplinesService.update(
+      id,
+      updateDisciplineDto,
+      user,
+    );
+    return DisciplineResponseDto.fromEntity(discipline);
   }
 
   /**
@@ -210,12 +248,9 @@ export class DisciplinesController {
   })
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @FirebaseUser() user: AuthenticatedUser,
   ): Promise<void> {
-
     return this.disciplinesService.remove(id, user);
   }
 }
-
-

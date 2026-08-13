@@ -1,16 +1,21 @@
 import {
-    Column,
-    CreateDateColumn,
-    Entity,
-    JoinColumn,
-    ManyToOne,
-    PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ReservationStatus } from '../common/enums';
 import { Class } from './class.entity';
 import { User } from './user.entity';
 
 @Entity('reservations')
+@Index('IDX_reservations_active_class_student', ['classId', 'studentId'], {
+  unique: true,
+  where: "status = 'RESERVED'",
+})
 export class Reservation {
   @PrimaryGeneratedColumn('uuid')
   id: string;

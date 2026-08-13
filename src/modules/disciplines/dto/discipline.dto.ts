@@ -1,5 +1,11 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 /**
  * DTO para crear una nueva disciplina
@@ -35,9 +41,29 @@ export class CreateDisciplineDto {
 
 /**
  * DTO para actualizar una disciplina
- * Todos los campos son opcionales
+ * gymId no es actualizable; la disciplina no puede transferirse de gimnasio.
  */
-export class UpdateDisciplineDto extends PartialType(CreateDisciplineDto) {}
+export class UpdateDisciplineDto {
+  @ApiProperty({
+    description: 'Nombre de la disciplina',
+    example: 'Yoga Avanzado',
+    required: false,
+    maxLength: 255,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  name?: string;
+
+  @ApiProperty({
+    description: 'Descripción detallada de la disciplina',
+    example: 'Clases de yoga avanzado',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
 
 /**
  * DTO para filtros de búsqueda

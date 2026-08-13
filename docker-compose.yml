@@ -27,7 +27,6 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: password
       DB_NAME: fitreserve
-      JWT_SECRET: clave_super_segura_para_jwt_tokens_2024
       PORT: 4000
     ports:
       - '4000:4000'

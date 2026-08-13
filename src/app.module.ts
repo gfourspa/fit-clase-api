@@ -7,9 +7,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { getDatabaseConfig } from './config/database.config';
+import { AuthModule } from './modules/auth/auth.module';
 import { ClassesModule } from './modules/classes/classes.module';
 import { DisciplinesModule } from './modules/disciplines/disciplines.module';
 import { GymsModule } from './modules/gyms/gyms.module';
+import { InvitationsModule } from './modules/invitations/invitations.module';
 import { ReservationsModule } from './modules/reservations/reservations.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -29,17 +31,21 @@ import { UsersModule } from './modules/users/users.module';
     }),
 
     // Rate limiting
-    ThrottlerModule.forRoot([{
-      ttl: 60000, // 1 minuto
-      limit: 100, // 100 requests por minuto
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minuto
+        limit: 100, // 100 requests por minuto
+      },
+    ]),
 
     // Módulos de la aplicación
+    AuthModule,
     UsersModule,
     GymsModule,
     ClassesModule,
     ReservationsModule,
     DisciplinesModule,
+    InvitationsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -41,16 +41,16 @@ export class RolesGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException(
-        'Usuario no autenticado. Debe usar FirebaseAuthGuard antes que RolesGuard.'
+        'Usuario no autenticado. Debe usar FirebaseAuthGuard antes que RolesGuard.',
       );
     }
 
     // Verificar si el usuario tiene uno de los roles requeridos
     const hasRole = requiredRoles.some((role) => user.role === role);
-    
+
     if (!hasRole) {
       throw new ForbiddenException(
-        `Acceso denegado. Roles requeridos: ${requiredRoles.join(', ')}`
+        `Acceso denegado. Roles requeridos: ${requiredRoles.join(', ')}`,
       );
     }
 
@@ -61,30 +61,43 @@ export class RolesGuard implements CanActivate {
   /**
    * Valida el acceso multi-tenant basado en gymId
    */
-  private validateMultiTenantAccess(user: AuthenticatedUser, request: Request): boolean {
+  private validateMultiTenantAccess(
+    user: AuthenticatedUser,
+    request: Request,
+  ): boolean {
     // SUPER_ADMIN tiene acceso a todo
     if (user.role === Role.SUPER_ADMIN) {
       return true;
     }
 
-    // Para otros roles, validar gymId si está presente en el request
+    // Para estudiantes y profesores, validar gymId si está presente en el request.
+    // OWNER_GYM y SUPER_ADMIN delegan la verificación de propiedad a los servicios.
     const gymIdFromParams = request.params?.gymId;
-    const gymIdFromBody = (request.body as any)?.gymId;
+    const gymIdFromBody = request.body?.gymId;
     const gymIdFromQuery = (request.query as any)?.gymId;
-    
-    // Si el endpoint especifica un gymId, debe coincidir con el del usuario
+
     const requestedGymId = gymIdFromParams || gymIdFromBody || gymIdFromQuery;
-    
-    if (requestedGymId && user.gymId !== requestedGymId) {
+
+    if (
+      requestedGymId &&
+      user.gymId &&
+      user.gymId !== requestedGymId &&
+      user.role !== Role.OWNER_GYM &&
+      user.role !== Role.SUPER_ADMIN
+    ) {
       throw new ForbiddenException(
-        'Acceso denegado. No tiene permisos para este gimnasio.'
+        'Acceso denegado. No tiene permisos para este gimnasio.',
       );
     }
 
-    // Validar que el usuario tenga un gymId asignado (excepto SUPER_ADMIN)
-    if (!user.gymId) {
+    // Validar que el usuario tenga un gymId asignado, excepto OWNER_GYM y SUPER_ADMIN.
+    if (
+      !user.gymId &&
+      user.role !== Role.OWNER_GYM &&
+      user.role !== Role.SUPER_ADMIN
+    ) {
       throw new ForbiddenException(
-        'Usuario sin gimnasio asignado. Contacte al administrador.'
+        'Usuario sin gimnasio asignado. Contacte al administrador.',
       );
     }
 

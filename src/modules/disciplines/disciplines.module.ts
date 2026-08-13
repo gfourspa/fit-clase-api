@@ -7,7 +7,7 @@ import { DisciplinesService } from './disciplines.service';
 
 /**
  * Disciplines Module
- * 
+ *
  * Módulo que maneja el CRUD completo de disciplinas deportivas.
  * Las disciplinas están asociadas a un gimnasio específico.
  */

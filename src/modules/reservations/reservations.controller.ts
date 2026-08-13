@@ -11,14 +11,20 @@ import {
   Put,
   Query,
   Request,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CreateReservationDto } from './dto/reservation.dto';
+import { ReservationResponseDto } from './dto/reservation-response.dto';
 import { ReservationsService } from './reservations.service';
 
 @ApiTags('Reservas')
@@ -33,9 +39,16 @@ export class ReservationsController {
   @ApiOperation({ summary: 'Crear una nueva reserva' })
   @ApiResponse({ status: 201, description: 'Reserva creada exitosamente' })
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createReservationDto: CreateReservationDto, @Request() req: any) {
+  async create(
+    @Body() createReservationDto: CreateReservationDto,
+    @Request() req: any,
+  ) {
     const user = req.user;
-    return this.reservationsService.create(createReservationDto, user);
+    const reservation = await this.reservationsService.create(
+      createReservationDto,
+      user,
+    );
+    return ReservationResponseDto.fromEntity(reservation);
   }
 
   @Get('my-reservations')
@@ -43,9 +56,13 @@ export class ReservationsController {
   @ApiOperation({ summary: 'Obtener mis reservas' })
   @ApiResponse({ status: 200, description: 'Lista de reservas del usuario' })
   @HttpCode(HttpStatus.OK)
-  findMyReservations(@Request() req: any) {
+  async findMyReservations(@Request() req: any) {
     const user = req.user;
-    return this.reservationsService.findMyReservations(user);
+    const reservations =
+      await this.reservationsService.findMyReservations(user);
+    return reservations.map((reservation) =>
+      ReservationResponseDto.fromEntity(reservation),
+    );
   }
 
   @Put(':id/cancel')
@@ -53,9 +70,10 @@ export class ReservationsController {
   @ApiOperation({ summary: 'Cancelar una reserva' })
   @ApiResponse({ status: 200, description: 'Reserva cancelada exitosamente' })
   @HttpCode(HttpStatus.OK)
-  cancel(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  async cancel(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const user = req.user;
-    return this.reservationsService.cancel(id, user);
+    const reservation = await this.reservationsService.cancel(id, user);
+    return ReservationResponseDto.fromEntity(reservation);
   }
 
   @Put(':classId/students/:studentId/attendance')
@@ -63,13 +81,19 @@ export class ReservationsController {
   @ApiOperation({ summary: 'Marcar asistencia a clase' })
   @ApiResponse({ status: 200, description: 'Asistencia marcada exitosamente' })
   @HttpCode(HttpStatus.OK)
-  markAttendance(
+  async markAttendance(
     @Param('classId', ParseUUIDPipe) classId: string,
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Query('attended', ParseBoolPipe) attended: boolean,
     @Request() req: any,
   ) {
     const user = req.user;
-    return this.reservationsService.markAttendance(classId, studentId, attended, user);
+    const reservation = await this.reservationsService.markAttendance(
+      classId,
+      studentId,
+      attended,
+      user,
+    );
+    return ReservationResponseDto.fromEntity(reservation);
   }
 }

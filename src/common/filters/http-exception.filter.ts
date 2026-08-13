@@ -1,10 +1,10 @@
 import {
-    ArgumentsHost,
-    Catch,
-    ExceptionFilter,
-    HttpException,
-    HttpStatus,
-    Logger,
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
@@ -31,7 +31,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const message = this.extractMessage(exception, isHttp);
-    const path = request.url;
+    // Nunca registrar query strings en logs de errores.
+    const path = request.url.split('?')[0];
     const timestamp = new Date().toISOString();
 
     if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {

@@ -5,6 +5,8 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    preDeployCommand: 'node node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js'
+    healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
         value: production

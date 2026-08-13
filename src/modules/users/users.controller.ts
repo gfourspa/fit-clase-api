@@ -5,11 +5,17 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
   UnauthorizedException,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -17,12 +23,16 @@ import { User } from '../../entities/user.entity';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { FirebaseUser } from '../auth/firebase-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces';
-import { AssignRoleDto, AutoAssignStudentDto } from './dto/user.dto';
+import {
+  AddUsersToGymDto,
+  AssignRoleDto,
+  AutoAssignStudentDto,
+} from './dto/user.dto';
 import { UserService } from './users.service';
 
 /**
  * Users Controller
- * 
+ *
  * Maneja los endpoints relacionados con la gestión de usuarios,
  * roles y sincronización con Firebase Auth siguiendo el flujo Flutter.
  */
@@ -35,21 +45,22 @@ export class UsersController {
   @Post('auto-assign-student')
   @UseGuards(FirebaseAuthGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
-    summary: 'Auto-asignar rol STUDENT', 
-    description: 'Endpoint llamado desde Flutter para asignar automáticamente el rol STUDENT a nuevos usuarios' 
+  @ApiOperation({
+    summary: 'Auto-asignar rol STUDENT',
+    description:
+      'Endpoint llamado desde Flutter para asignar automáticamente el rol STUDENT a nuevos usuarios usando una invitación.',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Rol STUDENT asignado exitosamente',
     schema: {
       example: {
-        uid: "firebase_uid_123",
-        email: "usuario@ejemplo.com", 
-        role: "STUDENT",
-        gymId: "uuid-gym-456"
-      }
-    }
+        uid: 'firebase_uid_123',
+        email: 'usuario@ejemplo.com',
+        role: 'STUDENT',
+        gymId: 'uuid-gym-456',
+      },
+    },
   })
   async autoAssignStudent(
     @Body() autoAssignDto: AutoAssignStudentDto,
@@ -62,15 +73,17 @@ export class UsersController {
   }> {
     const email = currentUser.email;
     if (typeof email !== 'string' || !email) {
-      throw new UnauthorizedException('Email no disponible en el token de autenticacion');
+      throw new UnauthorizedException(
+        'Email no disponible en el token de autenticacion',
+      );
     }
 
     const user = await this.userService.autoAssignStudent(
       currentUser.uid,
       email,
-      autoAssignDto.gymId
+      autoAssignDto.invitationToken,
     );
-    
+
     return {
       uid: user.firebase_uid || '',
       email: user.email || '',
@@ -79,44 +92,52 @@ export class UsersController {
     };
   }
 
-
   @Post('assign-role')
   @UseGuards(FirebaseAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Asignar rol a usuario',
-    description: 'Permite a SUPER_ADMIN asignar cualquier rol a un usuario' 
+    description: 'Permite a SUPER_ADMIN asignar cualquier rol a un usuario',
   })
   @ApiResponse({ status: 200, description: 'Rol asignado exitosamente' })
-  @ApiResponse({ status: 403, description: 'Acceso denegado - Solo SUPER_ADMIN' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso denegado - Solo SUPER_ADMIN',
+  })
   async assignRole(@Body() assignRoleDto: AssignRoleDto): Promise<User> {
     return this.userService.assignRole(assignRoleDto);
   }
 
   @Get('me')
   @UseGuards(FirebaseAuthGuard)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener perfil del usuario autenticado',
-    description: 'Retorna los datos del usuario a partir del token Firebase' 
+    description: 'Retorna los datos del usuario a partir del token Firebase',
   })
-  @ApiResponse({ status: 200, description: 'Datos del usuario obtenidos exitosamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Datos del usuario obtenidos exitosamente',
+  })
   @HttpCode(HttpStatus.OK)
-  async getMyProfile(@FirebaseUser() user: AuthenticatedUser): Promise<User | null> {
+  async getMyProfile(
+    @FirebaseUser() user: AuthenticatedUser,
+  ): Promise<User | null> {
     return this.userService.findByFirebaseUid(user.uid);
   }
-
 
   @Get()
   @UseGuards(FirebaseAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Listar todos los usuarios' })
-  @ApiResponse({ status: 200, description: 'Lista de usuarios obtenida exitosamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de usuarios obtenida exitosamente',
+  })
   @HttpCode(HttpStatus.OK)
   async getAllUsers(): Promise<User[]> {
     return this.userService.findAll();
   }
-
 
   @Post('sync')
   @UseGuards(FirebaseAuthGuard)
@@ -131,15 +152,16 @@ export class UsersController {
     });
   }
 
-
   @Post('/:gymId/add-to-gym')
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(FirebaseAuthGuard, RolesGuard)
   @Roles(Role.OWNER_GYM, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Agregar usuario a gimnasio' })
   @HttpCode(HttpStatus.OK)
-  async addUserToGym(@Body() body: { emails: string[] }, @Param('gymId') gymId: string): Promise<{ added: string[]; failed: string[] }> {
-    return this.userService.addUsersToGym(body.emails, gymId);
+  async addUserToGym(
+    @Body() body: AddUsersToGymDto,
+    @Param('gymId', ParseUUIDPipe) gymId: string,
+    @FirebaseUser() user: AuthenticatedUser,
+  ): Promise<{ added: string[]; failed: string[] }> {
+    return this.userService.addUsersToGym(body.emails, gymId, user);
   }
-
-  
 }

@@ -30,6 +30,7 @@ import {
   FilterClassDto,
   UpdateClassDto,
 } from './dto/class.dto';
+import { ClassResponseDto } from './dto/class-response.dto';
 
 @ApiTags('Clases')
 @Controller('classes')
@@ -43,9 +44,11 @@ export class ClassesController {
   @ApiOperation({ summary: 'Crear una nueva clase' })
   @ApiResponse({ status: 201, description: 'Clase creada exitosamente' })
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createClassDto: CreateClassDto, @Request() req: any) {
+  async create(@Body() createClassDto: CreateClassDto, @Request() req: any) {
     const user = req.user;
-    return this.classesService.create(createClassDto, user);
+    const created = await this.classesService.create(createClassDto, user);
+    const classEntity = await this.classesService.findOne(created.id, user);
+    return ClassResponseDto.fromEntity(classEntity);
   }
 
   @Get()
@@ -76,9 +79,15 @@ export class ClassesController {
     description: 'Lista de clases obtenida exitosamente',
   })
   @HttpCode(HttpStatus.OK)
-  findAll(@Query() filterDto: FilterClassDto, @Request() req: any) {
+  async findAll(@Query() filterDto: FilterClassDto, @Request() req: any) {
     const user = req.user;
-    return this.classesService.findAll(filterDto, user);
+    const result = await this.classesService.findAll(filterDto, user);
+    return {
+      ...result,
+      classes: result.classes.map((classEntity) =>
+        ClassResponseDto.fromEntity(classEntity),
+      ),
+    };
   }
 
   @Get(':id')
@@ -86,9 +95,10 @@ export class ClassesController {
   @ApiResponse({ status: 200, description: 'Clase obtenida exitosamente' })
   @ApiResponse({ status: 404, description: 'Clase no encontrada' })
   @HttpCode(HttpStatus.OK)
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const user = req.user;
-    return this.classesService.findOne(id, user);
+    const classEntity = await this.classesService.findOne(id, user);
+    return ClassResponseDto.fromEntity(classEntity);
   }
 
   @Patch(':id')
@@ -96,13 +106,15 @@ export class ClassesController {
   @ApiOperation({ summary: 'Actualizar clase' })
   @ApiResponse({ status: 200, description: 'Clase actualizada exitosamente' })
   @HttpCode(HttpStatus.OK)
-  update(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateClassDto: UpdateClassDto,
     @Request() req: any,
   ) {
     const user = req.user;
-    return this.classesService.update(id, updateClassDto, user);
+    await this.classesService.update(id, updateClassDto, user);
+    const classEntity = await this.classesService.findOne(id, user);
+    return ClassResponseDto.fromEntity(classEntity);
   }
 
   @Delete(':id')
@@ -120,11 +132,14 @@ export class ClassesController {
   @ApiOperation({ summary: 'Obtener clases de un profesor' })
   @ApiResponse({ status: 200, description: 'Lista de clases del profesor' })
   @ApiResponse({ status: 404, description: 'Profesor no encontrado' })
-  getTeacherClasses(
+  async getTeacherClasses(
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: any,
   ) {
     const user = req.user;
-    return this.classesService.findByTeacher(id, user);
+    const classes = await this.classesService.findByTeacher(id, user);
+    return classes.map((classEntity) =>
+      ClassResponseDto.fromEntity(classEntity),
+    );
   }
 }

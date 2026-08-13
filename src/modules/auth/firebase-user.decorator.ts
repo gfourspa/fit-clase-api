@@ -3,7 +3,7 @@ import { AuthenticatedUser } from './interfaces';
 
 /**
  * Decorador para obtener el usuario autenticado desde Firebase
- * 
+ *
  * @example
  * ```typescript
  * @Get('profile')
@@ -13,7 +13,10 @@ import { AuthenticatedUser } from './interfaces';
  * ```
  */
 export const FirebaseUser = createParamDecorator(
-  (data: keyof AuthenticatedUser | undefined, ctx: ExecutionContext): AuthenticatedUser | any => {
+  (
+    data: keyof AuthenticatedUser | undefined,
+    ctx: ExecutionContext,
+  ): AuthenticatedUser | any => {
     const request = ctx.switchToHttp().getRequest();
     const user: AuthenticatedUser = request.user;
 

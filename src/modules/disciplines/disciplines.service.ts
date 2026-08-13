@@ -1,19 +1,20 @@
 import { Role } from '@/common/enums';
 import { CustomException } from '@/common/exceptions/customs.exceptions';
-import {
-  Injectable,
-  Logger
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import { Discipline } from '../../entities/discipline.entity';
 import { Gym } from '../../entities/gym.entity';
 import { AuthenticatedUser } from '../auth';
-import { CreateDisciplineDto, FilterDisciplineDto, UpdateDisciplineDto } from './dto/discipline.dto';
+import {
+  CreateDisciplineDto,
+  FilterDisciplineDto,
+  UpdateDisciplineDto,
+} from './dto/discipline.dto';
 
 /**
  * DisciplinesService
- * 
+ *
  * Maneja el CRUD completo de disciplinas deportivas.
  * Las disciplinas están asociadas a un gimnasio específico.
  */
@@ -32,11 +33,19 @@ export class DisciplinesService {
    * Crear una nueva disciplina
    * Solo OWNER_GYM y SUPER_ADMIN pueden crear disciplinas
    */
-  async create(createDisciplineDto: CreateDisciplineDto, user: AuthenticatedUser): Promise<Discipline> {
+  async create(
+    createDisciplineDto: CreateDisciplineDto,
+    user: AuthenticatedUser,
+  ): Promise<Discipline> {
     this.logger.log(`Creando nueva disciplina: ${createDisciplineDto.name}`);
 
-    if (user.role === Role.OWNER_GYM && user.gymId !== createDisciplineDto.gymId) {
-      throw CustomException.Unauthorized('Solo puedes crear disciplinas en tu propio gimnasio');
+    if (
+      user.role === Role.OWNER_GYM &&
+      user.gymId !== createDisciplineDto.gymId
+    ) {
+      throw CustomException.Unauthorized(
+        'Solo puedes crear disciplinas en tu propio gimnasio',
+      );
     }
 
     // Verificar que el gimnasio existe
@@ -45,7 +54,9 @@ export class DisciplinesService {
     });
 
     if (!gym) {
-      throw CustomException.NotFound(`Gimnasio con ID ${createDisciplineDto.gymId} no encontrado`);
+      throw CustomException.NotFound(
+        `Gimnasio con ID ${createDisciplineDto.gymId} no encontrado`,
+      );
     }
 
     // Verificar si ya existe una disciplina con el mismo nombre en el mismo gimnasio
@@ -58,7 +69,7 @@ export class DisciplinesService {
 
     if (existingDiscipline) {
       throw CustomException.Conflict(
-        `Ya existe una disciplina con el nombre "${createDisciplineDto.name}" en este gimnasio`
+        `Ya existe una disciplina con el nombre "${createDisciplineDto.name}" en este gimnasio`,
       );
     }
 
@@ -73,19 +84,24 @@ export class DisciplinesService {
    * Obtener todas las disciplinas con filtros opcionales
    * Filtros disponibles: gymId, name (búsqueda parcial)
    */
-  async findAll(filters: FilterDisciplineDto, user: AuthenticatedUser): Promise<Discipline[]> {
-    this.logger.log(`Obteniendo disciplinas con filtros: ${JSON.stringify(filters)}`);
+  async findAll(
+    filters: FilterDisciplineDto,
+    user: AuthenticatedUser,
+  ): Promise<Discipline[]> {
+    this.logger.log(
+      `Obteniendo disciplinas con filtros: ${JSON.stringify(filters)}`,
+    );
 
-    // Si es OWNER_GYM, solo mostrar disciplinas de su gimnasio
-    if (user.role === Role.OWNER_GYM && !filters.gymId) {
+    // Los no-SUPER_ADMIN solo pueden ver disciplinas de su gimnasio.
+    // Un gymId explícito en query no debe saltar el aislamiento de tenant.
+    if (user.role !== Role.SUPER_ADMIN) {
+      if (filters.gymId && filters.gymId !== user.gymId) {
+        throw CustomException.BadRequestForbidden(
+          'No tienes permisos para ver disciplinas de este gimnasio',
+        );
+      }
       filters.gymId = user.gymId;
     }
-
-    // Si es TEACHER o STUDENT, solo mostrar disciplinas de su gimnasio
-    if ((user.role === Role.TEACHER || user.role === Role.STUDENT) && !filters.gymId) {
-      filters.gymId = user.gymId;
-    }
-
 
     const where: any = {};
 
@@ -106,7 +122,9 @@ export class DisciplinesService {
     });
 
     if (!disciplines || disciplines.length === 0) {
-      throw CustomException.NotFound('No se encontraron disciplinas con los filtros especificados');
+      throw CustomException.NotFound(
+        'No se encontraron disciplinas con los filtros especificados',
+      );
     }
 
     return disciplines;
@@ -115,7 +133,7 @@ export class DisciplinesService {
   /**
    * Obtener una disciplina por ID
    */
-  async findOne(id: string): Promise<Discipline> {
+  async findOne(id: string, user: AuthenticatedUser): Promise<Discipline> {
     this.logger.log(`Buscando disciplina con ID: ${id}`);
 
     const discipline = await this.disciplineRepository.findOne({
@@ -127,14 +145,29 @@ export class DisciplinesService {
       throw CustomException.NotFound(`Disciplina con ID ${id} no encontrada`);
     }
 
+    if (user.role !== Role.SUPER_ADMIN && discipline.gymId !== user.gymId) {
+      throw CustomException.BadRequestForbidden(
+        'No tienes permisos para ver esta disciplina',
+      );
+    }
+
     return discipline;
   }
 
   /**
    * Obtener disciplinas por gimnasio
    */
-  async findByGymId(gymId: string): Promise<Discipline[]> {
+  async findByGymId(
+    gymId: string,
+    user: AuthenticatedUser,
+  ): Promise<Discipline[]> {
     this.logger.log(`Obteniendo disciplinas del gimnasio: ${gymId}`);
+
+    if (user.role !== Role.SUPER_ADMIN && gymId !== user.gymId) {
+      throw CustomException.BadRequestForbidden(
+        'No tienes permisos para ver disciplinas de este gimnasio',
+      );
+    }
 
     const disciplines = await this.disciplineRepository.find({
       where: { gymId },
@@ -143,50 +176,54 @@ export class DisciplinesService {
     });
 
     if (!disciplines || disciplines.length === 0) {
-      throw CustomException.NotFound(`No se encontraron disciplinas para el gimnasio con ID ${gymId}`);
+      throw CustomException.NotFound(
+        `No se encontraron disciplinas para el gimnasio con ID ${gymId}`,
+      );
     }
 
     return disciplines;
-
   }
 
   /**
    * Actualizar una disciplina
    * Solo OWNER_GYM (del gimnasio) y SUPER_ADMIN pueden actualizar
    */
-  async update(id: string, updateDisciplineDto: UpdateDisciplineDto, user: AuthenticatedUser): Promise<Discipline> {
+  async update(
+    id: string,
+    updateDisciplineDto: UpdateDisciplineDto,
+    user: AuthenticatedUser,
+  ): Promise<Discipline> {
     this.logger.log(`Actualizando disciplina: ${id}`);
 
-    const discipline = await this.findOne(id);
+    const discipline = await this.findOne(id, user);
 
     // Validar que OWNER_GYM solo pueda actualizar disciplinas de su gimnasio
     if (user.role === Role.OWNER_GYM && user.gymId !== discipline.gymId) {
-      throw CustomException.Unauthorized('Solo puedes actualizar disciplinas de tu propio gimnasio');
+      throw CustomException.BadRequestForbidden(
+        'Solo puedes actualizar disciplinas de tu propio gimnasio',
+      );
     }
 
-    // Si se está actualizando el gymId, verificar que el nuevo gimnasio existe
-    if (updateDisciplineDto.gymId && updateDisciplineDto.gymId !== discipline.gymId) {
-      const gym = await this.gymRepository.findOne({
-        where: { id: updateDisciplineDto.gymId },
-      });
-
-      if (!gym) {
-        throw CustomException.NotFound(`Gimnasio con ID ${updateDisciplineDto.gymId} no encontrado`);
-      }
+    // El gymId es inmutable: no se permite transferir una disciplina a otro gimnasio.
+    if ('gymId' in updateDisciplineDto) {
+      delete (updateDisciplineDto as any).gymId;
     }
 
     // Si se está actualizando el nombre, verificar que no exista otra con el mismo nombre
-    if (updateDisciplineDto.name && updateDisciplineDto.name !== discipline.name) {
+    if (
+      updateDisciplineDto.name &&
+      updateDisciplineDto.name !== discipline.name
+    ) {
       const existingDiscipline = await this.disciplineRepository.findOne({
         where: {
           name: updateDisciplineDto.name,
-          gymId: updateDisciplineDto.gymId || discipline.gymId,
+          gymId: discipline.gymId,
         },
       });
 
       if (existingDiscipline && existingDiscipline.id !== id) {
         throw CustomException.Conflict(
-          `Ya existe una disciplina con el nombre "${updateDisciplineDto.name}" en este gimnasio`
+          `Ya existe una disciplina con el nombre "${updateDisciplineDto.name}" en este gimnasio`,
         );
       }
     }
@@ -205,18 +242,19 @@ export class DisciplinesService {
   async remove(id: string, user: AuthenticatedUser): Promise<void> {
     this.logger.log(`Eliminando disciplina: ${id}`);
 
-    const discipline = await this.findOne(id);
-
+    const discipline = await this.findOne(id, user);
 
     // Validar que OWNER_GYM solo pueda eliminar disciplinas de su gimnasio
     if (user.role === Role.OWNER_GYM && user.gymId !== discipline.gymId) {
-      throw CustomException.Unauthorized('Solo puedes eliminar disciplinas de tu propio gimnasio');
+      throw CustomException.BadRequestForbidden(
+        'Solo puedes eliminar disciplinas de tu propio gimnasio',
+      );
     }
 
     // Verificar si hay clases asociadas
     if (discipline.classes && discipline.classes.length > 0) {
       throw CustomException.Conflict(
-        `No se puede eliminar la disciplina porque tiene ${discipline.classes.length} clase(s) asociada(s)`
+        `No se puede eliminar la disciplina porque tiene ${discipline.classes.length} clase(s) asociada(s)`,
       );
     }
 

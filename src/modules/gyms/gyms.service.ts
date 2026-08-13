@@ -18,9 +18,13 @@ export class GymsService {
 
   async create(createGymDto: CreateGymDto, firebaseUid: string): Promise<Gym> {
     // Resolve the Firebase UID to the database owner id
-    const owner = await this.userRepository.findOne({ where: { firebase_uid: firebaseUid } });
+    const owner = await this.userRepository.findOne({
+      where: { firebase_uid: firebaseUid },
+    });
     if (!owner) {
-      throw CustomException.NotFound('Usuario no encontrado. Asegúrese de estar registrado en el sistema.');
+      throw CustomException.NotFound(
+        'Usuario no encontrado. Asegúrese de estar registrado en el sistema.',
+      );
     }
 
     const gym = this.gymRepository.create({
@@ -34,7 +38,9 @@ export class GymsService {
   async findAll(user: User): Promise<Gym[]> {
     // Solo super admin puede ver todos los gimnasios
     if (user.role !== Role.SUPER_ADMIN) {
-      throw CustomException.Unauthorized('Solo el super administrador puede ver todos los gimnasios');
+      throw CustomException.Unauthorized(
+        'Solo el super administrador puede ver todos los gimnasios',
+      );
     }
 
     return this.gymRepository.find({
@@ -45,7 +51,13 @@ export class GymsService {
   async findOne(id: string, user: User): Promise<Gym> {
     const gym = await this.gymRepository.findOne({
       where: { id },
-      relations: ['owner', 'users', 'classes', 'classes.discipline', 'classes.teacher'],
+      relations: [
+        'owner',
+        'users',
+        'classes',
+        'classes.discipline',
+        'classes.teacher',
+      ],
     });
 
     if (!gym) {
@@ -53,19 +65,29 @@ export class GymsService {
     }
 
     // Verificar permisos
-    if (user.role !== Role.SUPER_ADMIN && user.gymId !== gym.id && gym.ownerId !== user.id) {
+    if (
+      user.role !== Role.SUPER_ADMIN &&
+      user.gymId !== gym.id &&
+      gym.ownerId !== user.id
+    ) {
       throw CustomException.Unauthorized('No tienes acceso a este gimnasio');
     }
 
     return gym;
   }
 
-  async update(id: string, updateGymDto: UpdateGymDto, user: User): Promise<Gym> {
+  async update(
+    id: string,
+    updateGymDto: UpdateGymDto,
+    user: User,
+  ): Promise<Gym> {
     const gym = await this.findOne(id, user);
 
     // Solo el dueño o super admin pueden editar
     if (user.role !== Role.SUPER_ADMIN && gym.ownerId !== user.id) {
-      throw CustomException.Unauthorized('Solo el dueño del gimnasio puede editarlo');
+      throw CustomException.Unauthorized(
+        'Solo el dueño del gimnasio puede editarlo',
+      );
     }
 
     Object.assign(gym, updateGymDto);
@@ -77,7 +99,9 @@ export class GymsService {
 
     // Solo el dueño o super admin pueden eliminar
     if (user.role !== Role.SUPER_ADMIN && gym.ownerId !== user.id) {
-      throw CustomException.Unauthorized('Solo el dueño del gimnasio puede eliminarlo');
+      throw CustomException.Unauthorized(
+        'Solo el dueño del gimnasio puede eliminarlo',
+      );
     }
 
     await this.gymRepository.remove(gym);

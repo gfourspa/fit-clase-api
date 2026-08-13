@@ -1,6 +1,14 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { Class, Discipline, Gym, Reservation, User } from '../entities';
+import { join } from 'path';
+import {
+  Class,
+  Discipline,
+  Gym,
+  Invitation,
+  Reservation,
+  User,
+} from '../entities';
 
 export const getDatabaseConfig = (
   configService: ConfigService,
@@ -11,10 +19,16 @@ export const getDatabaseConfig = (
   username: configService.get('DB_USERNAME'),
   password: configService.get('DB_PASSWORD'),
   database: configService.get('DB_NAME'),
-  entities: [User, Gym, Discipline, Class, Reservation],
-  synchronize: configService.get('NODE_ENV') === 'development',
+  entities: [User, Gym, Discipline, Class, Reservation, Invitation],
+  migrations: [
+    join(__dirname, '..', 'database', 'migrations', '*.js'),
+    join(__dirname, '..', 'database', 'migrations', '*.ts'),
+  ],
+  migrationsRun: false,
+  synchronize: configService.get('NODE_ENV') !== 'production',
   logging: configService.get('NODE_ENV') === 'development',
-  ssl: configService.get('DB_SSL') === 'true' 
-    ? { rejectUnauthorized: true } 
-    : false,
+  ssl:
+    configService.get('DB_SSL') === 'true'
+      ? { rejectUnauthorized: true }
+      : false,
 });

@@ -10,9 +10,15 @@
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { NodeSDK } = require('@opentelemetry/sdk-node');
-const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
-const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
-const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
+const {
+  getNodeAutoInstrumentations,
+} = require('@opentelemetry/auto-instrumentations-node');
+const {
+  OTLPTraceExporter,
+} = require('@opentelemetry/exporter-trace-otlp-http');
+const {
+  OTLPMetricExporter,
+} = require('@opentelemetry/exporter-metrics-otlp-http');
 const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
 const { resourceFromAttributes } = require('@opentelemetry/resources');
 const { ATTR_SERVICE_NAME } = require('@opentelemetry/semantic-conventions');
@@ -20,8 +26,7 @@ const { ATTR_SERVICE_NAME } = require('@opentelemetry/semantic-conventions');
 const otlpEndpoint: string =
   process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';
 
-const serviceName: string =
-  process.env.OTEL_SERVICE_NAME ?? 'api-fit-clase';
+const serviceName: string = process.env.OTEL_SERVICE_NAME ?? 'api-fit-clase';
 
 const traceExporter = new OTLPTraceExporter({
   url: `${otlpEndpoint}/v1/traces`,
@@ -30,6 +35,27 @@ const traceExporter = new OTLPTraceExporter({
 const metricExporter = new OTLPMetricExporter({
   url: `${otlpEndpoint}/v1/metrics`,
 });
+
+/**
+ * Lista de parámetros de query que nunca deben aparecer en traces.
+ * Además de vaciar headersToSpanAttributes, se reemplazan sus valores por [Redacted].
+ */
+const redactedQueryParams = [
+  'token',
+  'auth',
+  'authorization',
+  'apiKey',
+  'api_key',
+  'key',
+  'secret',
+  'password',
+  'code',
+  'signature',
+  'sig',
+  'access_token',
+  'id_token',
+  'refresh_token',
+];
 
 const sdk = new NodeSDK({
   resource: resourceFromAttributes({
@@ -44,6 +70,31 @@ const sdk = new NodeSDK({
     getNodeAutoInstrumentations({
       // Deshabilitar instrumentación de fs para evitar ruido excesivo
       '@opentelemetry/instrumentation-fs': { enabled: false },
+
+      // HTTP: nunca capturar headers ni tokens de autorización.
+      '@opentelemetry/instrumentation-http': {
+        headersToSpanAttributes: {
+          server: { requestHeaders: [], responseHeaders: [] },
+          client: { requestHeaders: [], responseHeaders: [] },
+        },
+        redactedQueryParams,
+        applyCustomAttributesOnSpan: (span, request) => {
+          // Para las peticiones entrantes, reemplazar http.target por el path
+          // sin query string. http.url sigue siendo útil para diagnóstico pero
+          // redactedQueryParams ya enmascara valores sensibles.
+          if ('url' in request && typeof request.url === 'string') {
+            const path = request.url.split('?')[0];
+            span.setAttribute('http.target', path);
+          }
+        },
+      },
+
+      // PostgreSQL: desactivar el reporte de parámetros de query.
+      // Las sentencias de TypeORM usan parámetros posicionales ($1), por lo
+      // que los valores no aparecen en db.statement.
+      '@opentelemetry/instrumentation-pg': {
+        enhancedDatabaseReporting: false,
+      },
     }),
   ],
 });
@@ -55,6 +106,8 @@ process.on('SIGTERM', () => {
   sdk
     .shutdown()
     .then(() => console.log('OpenTelemetry SDK shut down'))
-    .catch((err: unknown) => console.error('Error shutting down OpenTelemetry SDK', err))
+    .catch((err: unknown) =>
+      console.error('Error shutting down OpenTelemetry SDK', err),
+    )
     .finally(() => process.exit(0));
 });
