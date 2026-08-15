@@ -42,9 +42,9 @@ export class User {
   @Column({ type: 'uuid', nullable: true })
   gymId: string | null;
 
-  @ManyToOne(() => Gym, (gym) => gym.users, { nullable: true })
+  @ManyToOne(() => Gym, (gym) => gym.users, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'gymId' })
-  gym: Gym;
+  gym: Gym | null;
 
   @OneToMany(() => Gym, (gym) => gym.owner)
   ownedGyms: Gym[];

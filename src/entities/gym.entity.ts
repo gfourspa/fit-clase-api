@@ -1,12 +1,12 @@
 import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+    Column,
+    CreateDateColumn,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    OneToMany,
+    PrimaryGeneratedColumn,
+    UpdateDateColumn,
 } from 'typeorm';
 import { Class } from './class.entity';
 import { Discipline } from './discipline.entity';
@@ -26,12 +26,12 @@ export class Gym {
   @Column({ type: 'varchar', length: 100 })
   contact: string;
 
-  @Column({ type: 'uuid' })
-  ownerId: string; // User UUID (Firebase User)
+  @Column({ type: 'uuid', nullable: true })
+  ownerId: string | null; // User UUID (Firebase User)
 
-  @ManyToOne(() => User, (user) => user.ownedGyms)
+  @ManyToOne(() => User, (user) => user.ownedGyms, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'ownerId' })
-  owner: User;
+  owner: User | null;
 
   @OneToMany(() => Class, (classEntity) => classEntity.gym)
   classes: Class[];
