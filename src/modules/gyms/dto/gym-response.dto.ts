@@ -5,7 +5,7 @@ export class GymResponseDto {
   name: string;
   address: string;
   contact: string;
-  ownerId: string;
+  ownerId: string | null;
   createdAt: Date;
   updatedAt: Date;
 
