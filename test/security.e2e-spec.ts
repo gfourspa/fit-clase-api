@@ -19,6 +19,7 @@ import { Gym } from './../src/entities/gym.entity';
 import { Reservation } from './../src/entities/reservation.entity';
 import { User } from './../src/entities/user.entity';
 import { FirebaseAuthGuard } from './../src/modules/auth/firebase-auth.guard';
+import { assertNoForbiddenKeys } from './helpers/response-boundary';
 import * as firebaseAdminConfig from './../src/modules/auth/firebase-admin.config';
 
 jest.setTimeout(30000);
@@ -322,6 +323,40 @@ describe('Security (e2e)', () => {
         .expect(HttpStatus.FORBIDDEN);
     });
 
+    it('returns safe class responses without reservations or nested entities', async () => {
+      const listResponse = await request(app.getHttpServer())
+        .get('/api/v1/classes')
+        .set(authHeader(studentA))
+        .expect(HttpStatus.OK);
+
+      expect(listResponse.body.classes.length).toBeGreaterThan(0);
+      const classResponse = listResponse.body.classes.find(
+        (item: { id: string }) => item.id === classA.id,
+      );
+      expect(classResponse).toBeDefined();
+      expect(classResponse).toMatchObject({
+        id: classA.id,
+        gymId: classA.gymId,
+        startTime: expect.stringMatching(/^09:00(?::00)?$/),
+        endTime: expect.stringMatching(/^10:00(?::00)?$/),
+        capacity: classA.capacity,
+        discipline: { id: disciplineA.id, name: disciplineA.name },
+        teacher: { id: teacherA.id, name: teacherA.name },
+      });
+      assertNoForbiddenKeys(classResponse);
+      expect(classResponse).not.toHaveProperty('reservations');
+      expect(classResponse).not.toHaveProperty('gym');
+      expect(classResponse).not.toHaveProperty('teacher.firebase_uid');
+
+      const detailResponse = await request(app.getHttpServer())
+        .get(`/api/v1/classes/${classA.id}`)
+        .set(authHeader(studentA))
+        .expect(HttpStatus.OK);
+      assertNoForbiddenKeys(detailResponse.body);
+      expect(detailResponse.body).not.toHaveProperty('reservations');
+      expect(detailResponse.body).not.toHaveProperty('gym');
+    });
+
     it('TEACHER cannot create a gym', async () => {
       await request(app.getHttpServer())
         .post('/api/v1/gyms')
@@ -385,10 +420,23 @@ describe('Security (e2e)', () => {
     });
 
     it('STUDENT can only access their own gym', async () => {
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .get(`/api/v1/gyms/${gymA.id}`)
         .set(authHeader(studentA))
         .expect(HttpStatus.OK);
+
+      expect(response.body).toMatchObject({
+        id: gymA.id,
+        name: gymA.name,
+        address: gymA.address,
+        contact: gymA.contact,
+        ownerId: gymA.ownerId,
+      });
+      assertNoForbiddenKeys(response.body);
+      expect(response.body).not.toHaveProperty('owner');
+      expect(response.body).not.toHaveProperty('users');
+      expect(response.body).not.toHaveProperty('classes');
+      expect(response.body).not.toHaveProperty('disciplines');
 
       await request(app.getHttpServer())
         .get(`/api/v1/gyms/${gymB.id}`)

@@ -16,6 +16,7 @@ import { Gym } from './../src/entities/gym.entity';
 import { Invitation } from './../src/entities/invitation.entity';
 import { User } from './../src/entities/user.entity';
 import { FirebaseAuthGuard } from './../src/modules/auth/firebase-auth.guard';
+import { assertNoForbiddenKeys } from './helpers/response-boundary';
 
 jest.setTimeout(30000);
 
@@ -152,6 +153,7 @@ describe('UsersController (e2e)', () => {
         .expect(HttpStatus.OK);
 
       expect(response.body.added).toContain(pendingUser.email);
+      assertNoForbiddenKeys(response.body);
 
       const updatedUser = await userRepository.findOne({
         where: { id: pendingUser.id },
@@ -169,6 +171,7 @@ describe('UsersController (e2e)', () => {
         .expect(HttpStatus.OK);
 
       expect(response.body.added).toContain(pendingUser.email);
+      assertNoForbiddenKeys(response.body);
 
       const updatedUser = await userRepository.findOne({
         where: { id: pendingUser.id },
@@ -223,6 +226,11 @@ describe('UsersController (e2e)', () => {
       expect(response.body.email).toBe(pendingUser.email);
       expect(response.body.gymId).toBe(gymA.id);
       expect(response.body.status).toBe(InvitationStatus.PENDING);
+      expect(response.body.id).toEqual(expect.any(String));
+      expect(response.body).not.toHaveProperty('usedByUserId');
+      expect(response.body).not.toHaveProperty('owner');
+      expect(response.body).not.toHaveProperty('users');
+      assertNoForbiddenKeys(response.body);
 
       await invitationRepository.delete(response.body.id);
     });
@@ -235,6 +243,9 @@ describe('UsersController (e2e)', () => {
         .expect(HttpStatus.CREATED);
 
       expect(response.body.gymId).toBe(gymB.id);
+      expect(response.body.id).toEqual(expect.any(String));
+      expect(response.body).not.toHaveProperty('usedByUserId');
+      assertNoForbiddenKeys(response.body);
 
       await invitationRepository.delete(response.body.id);
     });
@@ -263,6 +274,7 @@ describe('UsersController (e2e)', () => {
         .expect(HttpStatus.CREATED);
 
       const invitationToken = invitationResponse.body.id;
+      expect(invitationToken).toEqual(expect.any(String));
 
       const response = await request(app.getHttpServer())
         .post('/api/v1/users/auto-assign-student')
@@ -272,6 +284,7 @@ describe('UsersController (e2e)', () => {
 
       expect(response.body.role).toBe(Role.STUDENT);
       expect(response.body.gymId).toBe(gymA.id);
+      assertNoForbiddenKeys(response.body);
 
       const usedInvitation = await invitationRepository.findOne({
         where: { id: invitationToken },
@@ -281,6 +294,45 @@ describe('UsersController (e2e)', () => {
 
       await userRepository.update(pendingUser.id, { gymId: null });
       await invitationRepository.delete(invitationToken);
+    });
+
+    it('returns an explicit safe response for user synchronization', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/users/sync')
+        .set(authHeader(ownerA))
+        .expect(HttpStatus.OK);
+
+      expect(response.body).toMatchObject({
+        id: ownerA.id,
+        email: ownerA.email,
+        name: ownerA.name,
+        role: ownerA.role,
+        gymId: ownerA.gymId,
+      });
+      assertNoForbiddenKeys(response.body);
+      expect(response.body).not.toHaveProperty('gym');
+      expect(response.body).not.toHaveProperty('reservations');
+    });
+
+    it('returns safe administrative users without entity internals', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/users')
+        .set(authHeader(superAdmin))
+        .expect(HttpStatus.OK);
+
+      expect(response.body.length).toBeGreaterThan(0);
+      response.body.forEach((user: Record<string, unknown>) => {
+        assertNoForbiddenKeys(user);
+        expect(user).not.toHaveProperty('gym');
+        expect(user).not.toHaveProperty('reservations');
+        expect(user).toEqual(
+          expect.objectContaining({
+            id: expect.any(String),
+            email: expect.any(String),
+            role: expect.any(String),
+          }),
+        );
+      });
     });
 
     it('should reject auto-assign with wrong email', async () => {

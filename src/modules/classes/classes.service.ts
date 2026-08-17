@@ -112,8 +112,7 @@ export class ClassesService {
       .createQueryBuilder('class')
       .leftJoinAndSelect('class.gym', 'gym')
       .leftJoinAndSelect('class.discipline', 'discipline')
-      .leftJoinAndSelect('class.teacher', 'teacher')
-      .leftJoinAndSelect('class.reservations', 'reservations');
+      .leftJoinAndSelect('class.teacher', 'teacher');
 
     // Aplicar filtros según el rol del usuario
     if (user.role === Role.STUDENT || user.role === Role.TEACHER) {
@@ -164,13 +163,7 @@ export class ClassesService {
   async findOne(id: string, user: User): Promise<Class> {
     const classEntity = await this.classRepository.findOne({
       where: { id },
-      relations: [
-        'gym',
-        'discipline',
-        'teacher',
-        'reservations',
-        'reservations.student',
-      ],
+      relations: ['gym', 'discipline', 'teacher'],
     });
 
     if (!classEntity) {
@@ -299,7 +292,7 @@ export class ClassesService {
 
     return this.classRepository.find({
       where: { teacherId },
-      relations: ['gym', 'discipline', 'teacher', 'reservations'],
+      relations: ['gym', 'discipline', 'teacher'],
       order: { date: 'ASC', startTime: 'ASC' },
     });
   }

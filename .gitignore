@@ -63,3 +63,5 @@ postman/
 scripts/
 README_FLUTTER.md
 README_REACT_NATIVE.md
+/docs
+FLOWS.md

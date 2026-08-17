@@ -15,6 +15,8 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiQuery,
   ApiResponse,
@@ -30,7 +32,11 @@ import {
   FilterClassDto,
   UpdateClassDto,
 } from './dto/class.dto';
-import { ClassResponseDto } from './dto/class-response.dto';
+import {
+  ClassListResponseDto,
+  ClassResponseDto,
+} from './dto/class-response.dto';
+import { ClassMapper } from './class.mapper';
 
 @ApiTags('Clases')
 @Controller('classes')
@@ -43,12 +49,13 @@ export class ClassesController {
   @Roles(Role.SUPER_ADMIN, Role.OWNER_GYM)
   @ApiOperation({ summary: 'Crear una nueva clase' })
   @ApiResponse({ status: 201, description: 'Clase creada exitosamente' })
+  @ApiCreatedResponse({ type: ClassResponseDto })
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createClassDto: CreateClassDto, @Request() req: any) {
     const user = req.user;
     const created = await this.classesService.create(createClassDto, user);
     const classEntity = await this.classesService.findOne(created.id, user);
-    return ClassResponseDto.fromEntity(classEntity);
+    return ClassMapper.toResponse(classEntity);
   }
 
   @Get()
@@ -78,14 +85,17 @@ export class ClassesController {
     status: 200,
     description: 'Lista de clases obtenida exitosamente',
   })
+  @ApiOkResponse({ type: ClassListResponseDto })
   @HttpCode(HttpStatus.OK)
   async findAll(@Query() filterDto: FilterClassDto, @Request() req: any) {
     const user = req.user;
     const result = await this.classesService.findAll(filterDto, user);
     return {
-      ...result,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
       classes: result.classes.map((classEntity) =>
-        ClassResponseDto.fromEntity(classEntity),
+        ClassMapper.toResponse(classEntity),
       ),
     };
   }
@@ -94,17 +104,19 @@ export class ClassesController {
   @ApiOperation({ summary: 'Obtener clase por ID' })
   @ApiResponse({ status: 200, description: 'Clase obtenida exitosamente' })
   @ApiResponse({ status: 404, description: 'Clase no encontrada' })
+  @ApiOkResponse({ type: ClassResponseDto })
   @HttpCode(HttpStatus.OK)
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const user = req.user;
     const classEntity = await this.classesService.findOne(id, user);
-    return ClassResponseDto.fromEntity(classEntity);
+    return ClassMapper.toResponse(classEntity);
   }
 
   @Patch(':id')
   @Roles(Role.SUPER_ADMIN, Role.OWNER_GYM)
   @ApiOperation({ summary: 'Actualizar clase' })
   @ApiResponse({ status: 200, description: 'Clase actualizada exitosamente' })
+  @ApiOkResponse({ type: ClassResponseDto })
   @HttpCode(HttpStatus.OK)
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -114,13 +126,17 @@ export class ClassesController {
     const user = req.user;
     await this.classesService.update(id, updateClassDto, user);
     const classEntity = await this.classesService.findOne(id, user);
-    return ClassResponseDto.fromEntity(classEntity);
+    return ClassMapper.toResponse(classEntity);
   }
 
   @Delete(':id')
   @Roles(Role.SUPER_ADMIN, Role.OWNER_GYM)
   @ApiOperation({ summary: 'Eliminar clase' })
-  @ApiResponse({ status: 204, description: 'Clase eliminada exitosamente' })
+  @ApiResponse({
+    status: 204,
+    description: 'Clase eliminada exitosamente',
+    schema: { type: 'string', example: '' },
+  })
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const user = req.user;
@@ -132,14 +148,13 @@ export class ClassesController {
   @ApiOperation({ summary: 'Obtener clases de un profesor' })
   @ApiResponse({ status: 200, description: 'Lista de clases del profesor' })
   @ApiResponse({ status: 404, description: 'Profesor no encontrado' })
+  @ApiOkResponse({ type: [ClassResponseDto] })
   async getTeacherClasses(
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: any,
   ) {
     const user = req.user;
     const classes = await this.classesService.findByTeacher(id, user);
-    return classes.map((classEntity) =>
-      ClassResponseDto.fromEntity(classEntity),
-    );
+    return classes.map((classEntity) => ClassMapper.toResponse(classEntity));
   }
 }

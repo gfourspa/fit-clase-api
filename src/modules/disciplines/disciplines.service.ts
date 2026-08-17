@@ -117,7 +117,6 @@ export class DisciplinesService {
 
     const disciplines = await this.disciplineRepository.find({
       where,
-      relations: ['gym'],
       order: { name: 'ASC' },
     });
 
@@ -138,7 +137,6 @@ export class DisciplinesService {
 
     const discipline = await this.disciplineRepository.findOne({
       where: { id },
-      relations: ['gym', 'classes'],
     });
 
     if (!discipline) {
@@ -171,7 +169,6 @@ export class DisciplinesService {
 
     const disciplines = await this.disciplineRepository.find({
       where: { gymId },
-      relations: ['gym'],
       order: { name: 'ASC' },
     });
 
@@ -242,7 +239,20 @@ export class DisciplinesService {
   async remove(id: string, user: AuthenticatedUser): Promise<void> {
     this.logger.log(`Eliminando disciplina: ${id}`);
 
-    const discipline = await this.findOne(id, user);
+    const discipline = await this.disciplineRepository.findOne({
+      where: { id },
+      relations: ['classes'],
+    });
+
+    if (!discipline) {
+      throw CustomException.NotFound(`Disciplina con ID ${id} no encontrada`);
+    }
+
+    if (user.role !== Role.SUPER_ADMIN && discipline.gymId !== user.gymId) {
+      throw CustomException.BadRequestForbidden(
+        'No tienes permisos para ver esta disciplina',
+      );
+    }
 
     // Validar que OWNER_GYM solo pueda eliminar disciplinas de su gimnasio
     if (user.role === Role.OWNER_GYM && user.gymId !== discipline.gymId) {

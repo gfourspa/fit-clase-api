@@ -14,6 +14,8 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -21,7 +23,6 @@ import {
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { Discipline } from '../../entities/discipline.entity';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { FirebaseUser } from '../auth/firebase-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces';
@@ -32,6 +33,7 @@ import {
   UpdateDisciplineDto,
 } from './dto/discipline.dto';
 import { DisciplineResponseDto } from './dto/discipline-response.dto';
+import { DisciplineMapper } from './discipline.mapper';
 
 /**
  * Disciplines Controller
@@ -65,6 +67,7 @@ export class DisciplinesController {
     status: 201,
     description: 'Disciplina creada exitosamente',
   })
+  @ApiCreatedResponse({ type: DisciplineResponseDto })
   @ApiResponse({
     status: 400,
     description: 'Datos inválidos o disciplina ya existe',
@@ -85,7 +88,7 @@ export class DisciplinesController {
       createDisciplineDto,
       user,
     );
-    return DisciplineResponseDto.fromEntity(discipline);
+    return DisciplineMapper.toResponse(discipline);
   }
 
   /**
@@ -103,6 +106,7 @@ export class DisciplinesController {
     status: 200,
     description: 'Lista de disciplinas obtenida exitosamente',
   })
+  @ApiOkResponse({ type: [DisciplineResponseDto] })
   @HttpCode(HttpStatus.OK)
   async findAll(
     @Query() filters: FilterDisciplineDto,
@@ -110,7 +114,7 @@ export class DisciplinesController {
   ): Promise<DisciplineResponseDto[]> {
     const disciplines = await this.disciplinesService.findAll(filters, user);
     return disciplines.map((discipline) =>
-      DisciplineResponseDto.fromEntity(discipline),
+      DisciplineMapper.toResponse(discipline),
     );
   }
 
@@ -128,6 +132,7 @@ export class DisciplinesController {
     status: 200,
     description: 'Disciplina encontrada',
   })
+  @ApiOkResponse({ type: DisciplineResponseDto })
   @ApiResponse({
     status: 403,
     description: 'Acceso denegado',
@@ -142,7 +147,7 @@ export class DisciplinesController {
     @FirebaseUser() user: AuthenticatedUser,
   ): Promise<DisciplineResponseDto> {
     const discipline = await this.disciplinesService.findOne(id, user);
-    return DisciplineResponseDto.fromEntity(discipline);
+    return DisciplineMapper.toResponse(discipline);
   }
 
   /**
@@ -159,6 +164,7 @@ export class DisciplinesController {
     status: 200,
     description: 'Disciplinas del gimnasio obtenidas exitosamente',
   })
+  @ApiOkResponse({ type: [DisciplineResponseDto] })
   @ApiResponse({
     status: 403,
     description: 'Acceso denegado',
@@ -170,7 +176,7 @@ export class DisciplinesController {
   ): Promise<DisciplineResponseDto[]> {
     const disciplines = await this.disciplinesService.findByGymId(gymId, user);
     return disciplines.map((discipline) =>
-      DisciplineResponseDto.fromEntity(discipline),
+      DisciplineMapper.toResponse(discipline),
     );
   }
 
@@ -191,6 +197,7 @@ export class DisciplinesController {
     status: 200,
     description: 'Disciplina actualizada exitosamente',
   })
+  @ApiOkResponse({ type: DisciplineResponseDto })
   @ApiResponse({
     status: 400,
     description: 'Datos inválidos',
@@ -214,7 +221,7 @@ export class DisciplinesController {
       updateDisciplineDto,
       user,
     );
-    return DisciplineResponseDto.fromEntity(discipline);
+    return DisciplineMapper.toResponse(discipline);
   }
 
   /**
@@ -233,6 +240,7 @@ export class DisciplinesController {
   @ApiResponse({
     status: 204,
     description: 'Disciplina eliminada exitosamente',
+    schema: { type: 'string', example: '' },
   })
   @ApiResponse({
     status: 400,

@@ -19,6 +19,7 @@
 10. [Multi-tenancy y aislamiento por tenant](#10-multi-tenancy-y-aislamiento-por-tenant)
 11. [Flujos de seguridad](#11-flujos-de-seguridad)
 12. [Flujo de manejo de errores](#12-flujo-de-manejo-de-errores)
+13. [Contratos de respuesta y seguridad](#13-contratos-de-respuesta-y-seguridad)
 
 ---
 
@@ -136,6 +137,8 @@ Body: { "gymId": "<gym-uuid>", "email": "student@example.com", "expiresInHours":
 4. Se crea una fila `Invitation` con estado `PENDING`, el email solicitado y una fecha de expiración opcional.
 5. Se devuelve el UUID de la invitación.
 
+La respuesta es `InvitationResponseDto`. Su `id` sigue siendo el token de invitación; `usedByUserId` y otras columnas internas no se devuelven.
+
 ### 4.2 Aceptar invitación
 
 ```
@@ -158,6 +161,8 @@ Body: { "invitationToken": "<invitation-uuid>" }
    - `gymId = invitation.gymId`
 5. La invitación se marca como `USED` y se vincula al estudiante.
 6. Se actualizan los custom claims de Firebase como paso de conveniencia.
+
+La respuesta pública es `AutoAssignStudentResponseDto` (`uid`, `email`, `role`, `gymId`). `uid` se conserva por compatibilidad móvil; el campo interno `firebase_uid` nunca se expone con ese nombre.
 
 ### Notas de seguridad
 
@@ -182,6 +187,8 @@ Body: { "name": "FitGym", "address": "...", "contact": "..." }
 1. `RolesGuard` verifica `OWNER_GYM` o `SUPER_ADMIN`.
 2. El servicio crea el gimnasio con `ownerId = user.id` de la BD.
 3. La respuesta devuelve un DTO sanitizado del gimnasio.
+
+El DTO contiene únicamente `id`, `name`, `address`, `contact`, `ownerId`, `createdAt` y `updatedAt`; no incluye owner, usuarios, clases ni emails de propietarios.
 
 ### 5.2 Listar gimnasios
 
@@ -262,6 +269,8 @@ Authorization: Bearer <idToken>
 2. Los demás roles solo pueden leer disciplinas donde `discipline.gymId === user.gymId`.
 3. Las respuestas están sanitizadas: no incluyen el objeto `gym` ni la lista `classes`.
 
+`DisciplineResponseDto` nunca incluye `deletedAt`.
+
 ### 6.3 Actualizar / eliminar disciplina
 
 ```
@@ -326,6 +335,8 @@ Authorization: Bearer <idToken>
 3. `TEACHER` / `STUDENT` solo ven clases de su propio gimnasio.
 4. Un filtro explícito de `gymId` se valida contra los permisos del usuario.
 5. Las respuestas están sanitizadas: no incluyen `reservations` ni el objeto completo `gym`.
+
+Las clases exponen solo resúmenes controlados de `discipline` y `teacher`. Las listas no cargan reservas porque no calculan `availableSpots`.
 
 ### 7.3 Actualizar / eliminar clase
 
@@ -422,6 +433,8 @@ Authorization: Bearer <idToken de STUDENT, OWNER_GYM o SUPER_ADMIN>
 4. Los estudiantes no pueden cancelar dentro de las 2 horas previas al inicio de la clase.
 5. El estado cambia a `CANCELED`.
 
+La respuesta usa `ReservationResponseDto` y no incluye el estudiante, el gimnasio completo ni otras reservas.
+
 ### 8.4 Re-reserva
 
 Después de la cancelación, el índice único parcial ya no aplica (el estado es `CANCELED`), por lo que el estudiante puede crear una nueva reserva `RESERVED` para la misma clase, sujeta a capacidad.
@@ -446,6 +459,8 @@ Authorization: Bearer <idToken de OWNER_GYM, TEACHER o SUPER_ADMIN>
    - `OWNER_GYM` — solo si `class.gym.ownerId === user.id`.
    - `SUPER_ADMIN` — cualquier clase.
 4. El estado de la reserva se actualiza a `ATTENDED` o `MISSED`.
+
+La respuesta usa `ReservationResponseDto` y solo puede incluir un resumen controlado de la clase.
 
 ---
 

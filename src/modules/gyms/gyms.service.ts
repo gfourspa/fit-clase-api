@@ -43,21 +43,12 @@ export class GymsService {
       );
     }
 
-    return this.gymRepository.find({
-      relations: ['owner', 'users', 'classes'],
-    });
+    return this.gymRepository.find();
   }
 
   async findOne(id: string, user: User): Promise<Gym> {
     const gym = await this.gymRepository.findOne({
       where: { id },
-      relations: [
-        'owner',
-        'users',
-        'classes',
-        'classes.discipline',
-        'classes.teacher',
-      ],
     });
 
     if (!gym) {

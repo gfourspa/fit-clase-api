@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -19,7 +21,13 @@ import {
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { User } from '../../entities/user.entity';
+import {
+  AutoAssignStudentResponseDto,
+  BulkAddUsersResponseDto,
+  UserAdminResponseDto,
+  UserResponseDto,
+} from './dto/user-response.dto';
+import { UserMapper } from './user.mapper';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { FirebaseUser } from '../auth/firebase-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces';
@@ -50,27 +58,11 @@ export class UsersController {
     description:
       'Endpoint llamado desde Flutter para asignar automáticamente el rol STUDENT a nuevos usuarios usando una invitación.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Rol STUDENT asignado exitosamente',
-    schema: {
-      example: {
-        uid: 'firebase_uid_123',
-        email: 'usuario@ejemplo.com',
-        role: 'STUDENT',
-        gymId: 'uuid-gym-456',
-      },
-    },
-  })
+  @ApiOkResponse({ type: AutoAssignStudentResponseDto })
   async autoAssignStudent(
     @Body() autoAssignDto: AutoAssignStudentDto,
     @FirebaseUser() currentUser: AuthenticatedUser,
-  ): Promise<{
-    uid: string;
-    email: string;
-    role: string;
-    gymId: string;
-  }> {
+  ): Promise<AutoAssignStudentResponseDto> {
     const email = currentUser.email;
     if (typeof email !== 'string' || !email) {
       throw new UnauthorizedException(
@@ -84,12 +76,7 @@ export class UsersController {
       autoAssignDto.invitationToken,
     );
 
-    return {
-      uid: user.firebase_uid || '',
-      email: user.email || '',
-      role: user.role,
-      gymId: user.gymId || '',
-    };
+    return UserMapper.toAutoAssignStudentResponse(user);
   }
 
   @Post('assign-role')
@@ -101,12 +88,16 @@ export class UsersController {
     description: 'Permite a SUPER_ADMIN asignar cualquier rol a un usuario',
   })
   @ApiResponse({ status: 200, description: 'Rol asignado exitosamente' })
+  @ApiOkResponse({ type: UserAdminResponseDto })
   @ApiResponse({
     status: 403,
     description: 'Acceso denegado - Solo SUPER_ADMIN',
   })
-  async assignRole(@Body() assignRoleDto: AssignRoleDto): Promise<User> {
-    return this.userService.assignRole(assignRoleDto);
+  async assignRole(
+    @Body() assignRoleDto: AssignRoleDto,
+  ): Promise<UserAdminResponseDto> {
+    const user = await this.userService.assignRole(assignRoleDto);
+    return UserMapper.toAdminResponse(user);
   }
 
   @Get('me')
@@ -119,11 +110,22 @@ export class UsersController {
     status: 200,
     description: 'Datos del usuario obtenidos exitosamente',
   })
+  @ApiOkResponse({
+    description: 'Perfil o null si no existe',
+    schema: {
+      oneOf: [
+        { $ref: '#/components/schemas/UserResponseDto' },
+        { type: 'null' },
+      ],
+    },
+  })
   @HttpCode(HttpStatus.OK)
   async getMyProfile(
     @FirebaseUser() user: AuthenticatedUser,
-  ): Promise<User | null> {
-    return this.userService.findByFirebaseUid(user.uid);
+  ): Promise<UserResponseDto | null> {
+    const u = await this.userService.findByFirebaseUid(user.uid);
+    if (!u) return null;
+    return UserMapper.toResponse(u);
   }
 
   @Get()
@@ -134,34 +136,46 @@ export class UsersController {
     status: 200,
     description: 'Lista de usuarios obtenida exitosamente',
   })
+  @ApiOkResponse({ type: [UserAdminResponseDto] })
   @HttpCode(HttpStatus.OK)
-  async getAllUsers(): Promise<User[]> {
-    return this.userService.findAll();
+  async getAllUsers(): Promise<UserAdminResponseDto[]> {
+    const users = await this.userService.findAll();
+    return users.map((user) => UserMapper.toAdminResponse(user));
   }
 
   @Post('sync')
   @UseGuards(FirebaseAuthGuard)
   @ApiOperation({ summary: 'Sincronizar usuario con BD' })
+  @ApiOkResponse({ type: UserResponseDto })
   @HttpCode(HttpStatus.OK)
-  async syncUser(@FirebaseUser() user: AuthenticatedUser): Promise<User> {
-    return this.userService.syncUser({
+  async syncUser(
+    @FirebaseUser() user: AuthenticatedUser,
+  ): Promise<UserResponseDto> {
+    const syncedUser = await this.userService.syncUser({
       uid: user.uid,
       email: user.email,
       name: user.name,
       role: user.role,
     });
+    return UserMapper.toResponse(syncedUser);
   }
 
   @Post('/:gymId/add-to-gym')
   @UseGuards(FirebaseAuthGuard, RolesGuard)
   @Roles(Role.OWNER_GYM, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Agregar usuario a gimnasio' })
+  @ApiOkResponse({ type: BulkAddUsersResponseDto })
   @HttpCode(HttpStatus.OK)
   async addUserToGym(
     @Body() body: AddUsersToGymDto,
     @Param('gymId', ParseUUIDPipe) gymId: string,
     @FirebaseUser() user: AuthenticatedUser,
-  ): Promise<{ added: string[]; failed: string[] }> {
-    return this.userService.addUsersToGym(body.emails, gymId, user);
+  ): Promise<BulkAddUsersResponseDto> {
+    const result = await this.userService.addUsersToGym(
+      body.emails,
+      gymId,
+      user,
+    );
+    return UserMapper.toBulkAddUsersResponse(result);
   }
 }

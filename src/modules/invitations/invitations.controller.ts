@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -15,11 +16,12 @@ import {
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { Invitation } from '../../entities/invitation.entity';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { FirebaseUser } from '../auth/firebase-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces';
 import { CreateInvitationDto } from './dto/invitation.dto';
+import { InvitationResponseDto } from './dto/invitation-response.dto';
+import { InvitationMapper } from './invitation.mapper';
 import { InvitationsService } from './invitations.service';
 
 @ApiTags('Invitaciones')
@@ -34,11 +36,13 @@ export class InvitationsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Crear invitación para unirse a un gimnasio' })
   @ApiResponse({ status: 201, description: 'Invitación creada exitosamente' })
+  @ApiCreatedResponse({ type: InvitationResponseDto })
   @ApiResponse({ status: 403, description: 'Acceso denegado' })
   async create(
     @Body() dto: CreateInvitationDto,
     @FirebaseUser() user: AuthenticatedUser,
-  ): Promise<Invitation> {
-    return this.invitationsService.create(dto, user);
+  ): Promise<InvitationResponseDto> {
+    const invitation = await this.invitationsService.create(dto, user);
+    return InvitationMapper.toResponse(invitation);
   }
 }

@@ -15,6 +15,8 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -25,6 +27,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CreateReservationDto } from './dto/reservation.dto';
 import { ReservationResponseDto } from './dto/reservation-response.dto';
+import { ReservationMapper } from './reservation.mapper';
 import { ReservationsService } from './reservations.service';
 
 @ApiTags('Reservas')
@@ -38,6 +41,7 @@ export class ReservationsController {
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Crear una nueva reserva' })
   @ApiResponse({ status: 201, description: 'Reserva creada exitosamente' })
+  @ApiCreatedResponse({ type: ReservationResponseDto })
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() createReservationDto: CreateReservationDto,
@@ -48,20 +52,21 @@ export class ReservationsController {
       createReservationDto,
       user,
     );
-    return ReservationResponseDto.fromEntity(reservation);
+    return ReservationMapper.toResponse(reservation);
   }
 
   @Get('my-reservations')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Obtener mis reservas' })
   @ApiResponse({ status: 200, description: 'Lista de reservas del usuario' })
+  @ApiOkResponse({ type: [ReservationResponseDto] })
   @HttpCode(HttpStatus.OK)
   async findMyReservations(@Request() req: any) {
     const user = req.user;
     const reservations =
       await this.reservationsService.findMyReservations(user);
     return reservations.map((reservation) =>
-      ReservationResponseDto.fromEntity(reservation),
+      ReservationMapper.toResponse(reservation),
     );
   }
 
@@ -69,17 +74,19 @@ export class ReservationsController {
   @Roles(Role.STUDENT, Role.OWNER_GYM, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Cancelar una reserva' })
   @ApiResponse({ status: 200, description: 'Reserva cancelada exitosamente' })
+  @ApiOkResponse({ type: ReservationResponseDto })
   @HttpCode(HttpStatus.OK)
   async cancel(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     const user = req.user;
     const reservation = await this.reservationsService.cancel(id, user);
-    return ReservationResponseDto.fromEntity(reservation);
+    return ReservationMapper.toResponse(reservation);
   }
 
   @Put(':classId/students/:studentId/attendance')
   @Roles(Role.OWNER_GYM, Role.SUPER_ADMIN, Role.TEACHER)
   @ApiOperation({ summary: 'Marcar asistencia a clase' })
   @ApiResponse({ status: 200, description: 'Asistencia marcada exitosamente' })
+  @ApiOkResponse({ type: ReservationResponseDto })
   @HttpCode(HttpStatus.OK)
   async markAttendance(
     @Param('classId', ParseUUIDPipe) classId: string,
@@ -94,6 +101,6 @@ export class ReservationsController {
       attended,
       user,
     );
-    return ReservationResponseDto.fromEntity(reservation);
+    return ReservationMapper.toResponse(reservation);
   }
 }

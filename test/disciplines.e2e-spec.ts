@@ -16,6 +16,7 @@ import { Discipline } from './../src/entities/discipline.entity';
 import { Gym } from './../src/entities/gym.entity';
 import { User } from './../src/entities/user.entity';
 import { FirebaseAuthGuard } from './../src/modules/auth/firebase-auth.guard';
+import { assertNoForbiddenKeys } from './helpers/response-boundary';
 
 jest.setTimeout(30000);
 
@@ -163,6 +164,10 @@ describe('DisciplinesController (e2e)', () => {
 
       expect(response.body).toHaveLength(1);
       expect(response.body[0].id).toBe(disciplineA.id);
+      assertNoForbiddenKeys(response.body[0]);
+      expect(response.body[0]).not.toHaveProperty('gym');
+      expect(response.body[0]).not.toHaveProperty('classes');
+      expect(response.body[0]).not.toHaveProperty('deletedAt');
     });
 
     it('should not allow explicit gymId query to bypass tenant isolation', async () => {
@@ -192,6 +197,10 @@ describe('DisciplinesController (e2e)', () => {
         .expect(HttpStatus.OK);
 
       expect(response.body.id).toBe(disciplineA.id);
+      assertNoForbiddenKeys(response.body);
+      expect(response.body).not.toHaveProperty('gym');
+      expect(response.body).not.toHaveProperty('classes');
+      expect(response.body).not.toHaveProperty('deletedAt');
     });
 
     it('should not allow Gym A to read Gym B disciplines', async () => {
@@ -230,6 +239,10 @@ describe('DisciplinesController (e2e)', () => {
 
       expect(response.body).toHaveLength(1);
       expect(response.body[0].id).toBe(disciplineA.id);
+      assertNoForbiddenKeys(response.body[0]);
+      expect(response.body[0]).not.toHaveProperty('gym');
+      expect(response.body[0]).not.toHaveProperty('classes');
+      expect(response.body[0]).not.toHaveProperty('deletedAt');
     });
 
     it('should not allow Gym A to read Gym B disciplines by gymId', async () => {
@@ -260,6 +273,8 @@ describe('DisciplinesController (e2e)', () => {
 
       expect(response.body.name).toBe('Yoga A Updated');
       expect(response.body.gymId).toBe(gymA.id);
+      assertNoForbiddenKeys(response.body);
+      expect(response.body).not.toHaveProperty('deletedAt');
 
       disciplineA.name = 'Yoga A Updated';
     });

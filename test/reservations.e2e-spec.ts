@@ -18,6 +18,7 @@ import { Class } from './../src/entities/class.entity';
 import { Discipline } from './../src/entities/discipline.entity';
 import { Gym } from './../src/entities/gym.entity';
 import { Reservation } from './../src/entities/reservation.entity';
+import { assertNoForbiddenKeys } from './helpers/response-boundary';
 import { User } from './../src/entities/user.entity';
 import { FirebaseAuthGuard } from './../src/modules/auth/firebase-auth.guard';
 
@@ -167,6 +168,10 @@ describe('ReservationsController (e2e)', () => {
       expect(response.body.classId).toBe(testClass.id);
       expect(response.body.studentId).toBe(studentA.id);
       expect(response.body.status).toBe('RESERVED');
+      assertNoForbiddenKeys(response.body);
+      expect(response.body).not.toHaveProperty('student');
+      expect(response.body).not.toHaveProperty('gym');
+      expect(response.body).not.toHaveProperty('class.reservations');
     });
 
     it('should reject duplicate active reservation for the same student and class', async () => {
@@ -199,6 +204,23 @@ describe('ReservationsController (e2e)', () => {
 
       expect(response.body.studentId).toBe(studentA.id);
       expect(response.body.status).toBe('RESERVED');
+      assertNoForbiddenKeys(response.body);
+    });
+
+    it('should return only the current student reservations with controlled class summaries', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/reservations/my-reservations')
+        .set(authHeader(studentA))
+        .expect(HttpStatus.OK);
+
+      expect(response.body.length).toBeGreaterThan(0);
+      response.body.forEach((reservation: Record<string, unknown>) => {
+        expect(reservation.studentId).toBe(studentA.id);
+        assertNoForbiddenKeys(reservation);
+        expect(reservation).not.toHaveProperty('student');
+        expect(reservation).not.toHaveProperty('gym');
+        expect(reservation).not.toHaveProperty('class.reservations');
+      });
     });
 
     it('should allow only one concurrent reservation when capacity is one', async () => {
@@ -373,6 +395,9 @@ describe('ReservationsController (e2e)', () => {
         .expect(HttpStatus.OK);
 
       expect(response.body.status).toBe(ReservationStatus.ATTENDED);
+      assertNoForbiddenKeys(response.body);
+      expect(response.body).not.toHaveProperty('student');
+      expect(response.body).not.toHaveProperty('gym');
     });
 
     it('should allow TEACHER to mark attendance for their class', async () => {
@@ -385,6 +410,8 @@ describe('ReservationsController (e2e)', () => {
         .expect(HttpStatus.OK);
 
       expect(response.body.status).toBe(ReservationStatus.MISSED);
+      assertNoForbiddenKeys(response.body);
+      expect(response.body).not.toHaveProperty('student');
     });
 
     it('should not allow OWNER_GYM to mark attendance in another gym', async () => {
@@ -417,6 +444,7 @@ describe('ReservationsController (e2e)', () => {
         .expect(HttpStatus.OK);
 
       expect(response.body.status).toBe(ReservationStatus.ATTENDED);
+      assertNoForbiddenKeys(response.body);
     });
 
     it('should reject STUDENT with 403', async () => {
