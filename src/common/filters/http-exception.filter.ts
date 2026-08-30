@@ -16,6 +16,14 @@ interface ErrorResponse {
   message: string | string[];
 }
 
+interface ExceptionLogPayload {
+  statusCode: number;
+  method: string;
+  path: string;
+  message: string;
+  userAgent?: string;
+}
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -35,12 +43,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const path = request.url.split('?')[0];
     const timestamp = new Date().toISOString();
 
-    if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
-      const stack = exception instanceof Error ? exception.stack : undefined;
-      this.logger.error(`[${statusCode}] ${path} — ${String(message)}`, stack);
-    } else {
-      this.logger.warn(`[${statusCode}] ${path} — ${String(message)}`);
-    }
+    this.logException(request, statusCode, path, message, exception);
 
     const body: ErrorResponse = {
       success: false,
@@ -51,6 +54,60 @@ export class AllExceptionsFilter implements ExceptionFilter {
     };
 
     response.status(statusCode).json(body);
+  }
+
+  private logException(
+    request: Request,
+    statusCode: number,
+    path: string,
+    message: string | string[],
+    exception: unknown,
+  ): void {
+    const payload: ExceptionLogPayload = {
+      statusCode,
+      method: request.method ?? 'UNKNOWN',
+      path,
+      message: String(message),
+    };
+
+    const userAgent = this.sanitizeUserAgent(
+      request.headers?.['user-agent'] as string | undefined,
+    );
+    if (userAgent) {
+      payload.userAgent = userAgent;
+    }
+
+    if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      const stack = exception instanceof Error ? exception.stack : undefined;
+      this.logger.error(payload, stack);
+      return;
+    }
+
+    if (statusCode === HttpStatus.FORBIDDEN || statusCode === 429) {
+      this.logger.warn(payload);
+      return;
+    }
+
+    if (statusCode === HttpStatus.NOT_FOUND && !path.startsWith('/api/v1/')) {
+      // Rutas públicas desconocidas (scanners/bots): reducir ruido.
+      this.logger.debug(payload);
+      return;
+    }
+
+    this.logger.log(payload);
+  }
+
+  private sanitizeUserAgent(
+    userAgent: string | undefined,
+    maxLength = 200,
+  ): string | undefined {
+    if (!userAgent || typeof userAgent !== 'string') {
+      return undefined;
+    }
+    const trimmed = userAgent.trim();
+    return trimmed.length > maxLength
+      ? `${trimmed.slice(0, maxLength)}...`
+      : trimmed;
   }
 
   private extractMessage(

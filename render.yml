@@ -5,7 +5,8 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    preDeployCommand: 'node node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js'
+    # Migrations run inside the container via start-prod.sh before the app starts.
+    # Render's preDeployCommand is not executed for Docker-based services.
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV

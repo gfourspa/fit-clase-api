@@ -22,6 +22,9 @@ RUN npm run build
 # Remove development dependencies after build
 RUN npm prune --omit=dev
 
+# Ensure startup script is executable
+RUN chmod +x start-prod.sh
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001
@@ -38,5 +41,5 @@ EXPOSE 4000
 # Set environment to production
 ENV NODE_ENV=production
 
-# Start the application using the compiled JavaScript
-CMD ["node", "dist/main.js"]
+# Run migrations and then start the application
+CMD ["./start-prod.sh"]
