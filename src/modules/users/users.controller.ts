@@ -4,11 +4,9 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -37,6 +35,7 @@ import {
   AutoAssignStudentDto,
 } from './dto/user.dto';
 import { UserService } from './users.service';
+import { InvitationsService } from '../invitations/invitations.service';
 
 /**
  * Users Controller
@@ -48,7 +47,10 @@ import { UserService } from './users.service';
 @Controller('users')
 @ApiBearerAuth()
 export class UsersController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly invitationsService: InvitationsService,
+  ) {}
 
   @Post('auto-assign-student')
   @UseGuards(FirebaseAuthGuard)
@@ -63,20 +65,12 @@ export class UsersController {
     @Body() autoAssignDto: AutoAssignStudentDto,
     @FirebaseUser() currentUser: AuthenticatedUser,
   ): Promise<AutoAssignStudentResponseDto> {
-    const email = currentUser.email;
-    if (typeof email !== 'string' || !email) {
-      throw new UnauthorizedException(
-        'Email no disponible en el token de autenticacion',
-      );
-    }
-
-    const user = await this.userService.autoAssignStudent(
-      currentUser.uid,
-      email,
+    const result = await this.invitationsService.accept(
+      currentUser,
       autoAssignDto.invitationToken,
     );
 
-    return UserMapper.toAutoAssignStudentResponse(user);
+    return UserMapper.toAutoAssignStudentResponse(result.user);
   }
 
   @Post('assign-role')

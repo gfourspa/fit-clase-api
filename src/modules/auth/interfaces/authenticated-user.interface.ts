@@ -6,6 +6,8 @@ export interface AuthenticatedUser {
   uid: string;
   id?: string;
   email?: string;
+  firebaseEmail?: string;
+  emailVerified?: boolean;
   name?: string;
   role?: string;
   gymId?: string;

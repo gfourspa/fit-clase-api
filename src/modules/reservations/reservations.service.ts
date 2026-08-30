@@ -129,11 +129,7 @@ export class ReservationsService {
       order: { createdAt: 'DESC' },
     });
 
-    if (!reservations || reservations.length === 0) {
-      throw CustomException.NotFound('No tienes reservas');
-    }
-
-    return reservations;
+    return reservations ?? [];
   }
 
   async cancel(id: string, user: User): Promise<Reservation> {

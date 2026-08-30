@@ -122,16 +122,18 @@ describe('response mapper allow-lists', () => {
   it('maps Invitation without usedByUserId', () => {
     const entity = Object.assign(new Invitation(), {
       id: 'invitation-token',
+      tokenHash: 'internal-token-hash',
       gymId: 'gym-id',
       email: 'student@example.com',
       status: InvitationStatus.PENDING,
-      expiresAt: null,
+      expiresAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
       usedByUserId: 'internal-user-id',
     });
     const response = InvitationMapper.toResponse(entity);
     expect(response).not.toHaveProperty('usedByUserId');
+    expect(response).not.toHaveProperty('tokenHash');
     expect(response.id).toBe('invitation-token');
   });
 });

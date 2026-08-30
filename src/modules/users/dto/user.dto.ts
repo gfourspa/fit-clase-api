@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   ArrayNotEmpty,
   IsArray,
   IsEmail,
@@ -6,7 +7,9 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
+  MinLength,
 } from 'class-validator';
 import { Role } from '../../../common/enums';
 
@@ -32,7 +35,10 @@ export class AssignRoleDto {
  * La membresía al gimnasio se obtiene de una invitación previamente creada por OWNER_GYM/SUPER_ADMIN.
  */
 export class AutoAssignStudentDto {
-  @IsUUID()
+  @IsString()
+  @MinLength(20)
+  @MaxLength(200)
+  @Matches(/^[A-Za-z0-9_-]+$/)
   invitationToken!: string;
 }
 
@@ -42,6 +48,7 @@ export class AutoAssignStudentDto {
 export class AddUsersToGymDto {
   @IsArray()
   @ArrayNotEmpty()
+  @ArrayMaxSize(50, { message: 'No puedes agregar más de 50 emails por solicitud' })
   @IsEmail({}, { each: true })
   @MaxLength(255, { each: true })
   emails!: string[];

@@ -120,13 +120,7 @@ export class DisciplinesService {
       order: { name: 'ASC' },
     });
 
-    if (!disciplines || disciplines.length === 0) {
-      throw CustomException.NotFound(
-        'No se encontraron disciplinas con los filtros especificados',
-      );
-    }
-
-    return disciplines;
+    return disciplines ?? [];
   }
 
   /**
@@ -172,13 +166,7 @@ export class DisciplinesService {
       order: { name: 'ASC' },
     });
 
-    if (!disciplines || disciplines.length === 0) {
-      throw CustomException.NotFound(
-        `No se encontraron disciplinas para el gimnasio con ID ${gymId}`,
-      );
-    }
-
-    return disciplines;
+    return disciplines ?? [];
   }
 
   /**

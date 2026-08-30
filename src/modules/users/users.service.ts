@@ -2,9 +2,8 @@ import { CustomException } from '@/common/exceptions/customs.exceptions';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { InvitationStatus, Role } from '../../common/enums';
+import { Role } from '../../common/enums';
 import { Gym } from '../../entities/gym.entity';
-import { Invitation } from '../../entities/invitation.entity';
 import { User } from '../../entities/user.entity';
 import { getFirebaseAdmin } from '../auth/firebase-admin.config';
 import { AuthenticatedUser } from '../auth/interfaces';
@@ -25,8 +24,6 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Gym)
     private readonly gymRepository: Repository<Gym>,
-    @InjectRepository(Invitation)
-    private readonly invitationRepository: Repository<Invitation>,
   ) {}
 
   /**
@@ -64,93 +61,6 @@ export class UserService {
     }
 
     return user;
-  }
-
-  /**
-   * Asigna automáticamente el rol STUDENT a un nuevo usuario usando una invitación.
-   * La membresía al gimnasio se obtiene de la invitación, no del body del request.
-   */
-  async autoAssignStudent(
-    uid: string,
-    email: string,
-    invitationToken: string,
-  ): Promise<User> {
-    this.logger.log(`🎓 Auto-asignando rol STUDENT a usuario: ${email}`);
-
-    const normalizedEmail = email.toLowerCase().trim();
-
-    const invitation = await this.invitationRepository.findOne({
-      where: { id: invitationToken },
-    });
-
-    if (!invitation) {
-      throw CustomException.NotFound('Invitación no encontrada');
-    }
-
-    if (invitation.email.toLowerCase().trim() !== normalizedEmail) {
-      throw CustomException.Unauthorized(
-        'La invitación no corresponde a este email',
-      );
-    }
-
-    if (invitation.status !== InvitationStatus.PENDING) {
-      throw CustomException.BadRequest(
-        'La invitación ya fue utilizada o está cancelada',
-      );
-    }
-
-    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
-      invitation.status = InvitationStatus.EXPIRED;
-      await this.invitationRepository.save(invitation);
-      throw CustomException.BadRequest('La invitación ha expirado');
-    }
-
-    try {
-      let user = await this.userRepository.findOne({
-        where: { firebase_uid: uid },
-      });
-
-      if (!user) {
-        user = this.userRepository.create({
-          firebase_uid: uid,
-          email: normalizedEmail,
-          role: Role.STUDENT,
-          gymId: invitation.gymId,
-        });
-      } else {
-        user.email = normalizedEmail;
-        user.role = Role.STUDENT;
-        user.gymId = invitation.gymId;
-      }
-
-      user = await this.userRepository.save(user);
-
-      invitation.status = InvitationStatus.USED;
-      invitation.usedByUserId = user.id;
-      await this.invitationRepository.save(invitation);
-
-      try {
-        const admin = getFirebaseAdmin();
-        await admin.auth().setCustomUserClaims(uid, {
-          id: user.id,
-          role: Role.STUDENT,
-          gymId: invitation.gymId,
-        });
-      } catch (claimsError) {
-        this.logger.warn(
-          `No se pudieron actualizar los claims de Firebase para ${email}: ${claimsError}`,
-        );
-      }
-
-      this.logger.log(`Rol STUDENT asignado exitosamente a ${email}`);
-
-      return user;
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      const stack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error asignando rol: ${msg}`, stack);
-      throw CustomException.BadRequest(`Error asignando rol`);
-    }
   }
 
   /**
@@ -194,13 +104,7 @@ export class UserService {
       relations: ['gym'],
     });
 
-    if (!users || users.length === 0) {
-      throw CustomException.NotFound(
-        'No se encontraron usuarios para el gimnasio especificado',
-      );
-    }
-
-    return users;
+    return users ?? [];
   }
 
   /**
@@ -238,6 +142,14 @@ export class UserService {
       throw CustomException.BadRequest(
         'Los usuarios que no son SUPER_ADMIN deben tener un gymId asignado',
       );
+    }
+
+    // Validar que el gimnasio exista si se proporciona gymId
+    if (gymId) {
+      const gym = await this.gymRepository.findOne({ where: { id: gymId } });
+      if (!gym) {
+        throw CustomException.NotFound('Gimnasio no encontrado');
+      }
     }
 
     // Buscar el usuario por Firebase UID
@@ -300,11 +212,7 @@ export class UserService {
       relations: ['gym'],
     });
 
-    if (!users || users.length === 0) {
-      throw CustomException.NotFound('No se encontraron usuarios');
-    }
-
-    return users;
+    return users ?? [];
   }
 
   /**

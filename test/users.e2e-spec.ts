@@ -26,11 +26,20 @@ class TestAuthGuard implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const userHeader = req.headers['x-test-user'];
     req.user = userHeader
-      ? JSON.parse(userHeader)
+      ? (() => {
+          const user = JSON.parse(userHeader);
+          return {
+            ...user,
+            firebaseEmail: user.email,
+            emailVerified: true,
+          };
+        })()
       : {
           uid: 'default-uid',
           id: 'default-user',
           email: 'default@test.com',
+          firebaseEmail: 'default@test.com',
+          emailVerified: true,
           role: Role.STUDENT,
           gymId: 'default-gym',
         };
@@ -227,6 +236,11 @@ describe('UsersController (e2e)', () => {
       expect(response.body.gymId).toBe(gymA.id);
       expect(response.body.status).toBe(InvitationStatus.PENDING);
       expect(response.body.id).toEqual(expect.any(String));
+      expect(response.body.invitationToken).toEqual(expect.any(String));
+      expect(response.body.invitationToken).not.toBe(response.body.id);
+      expect(response.body.emailSent).toBe(false);
+      expect(response.body.expiresAt).toEqual(expect.any(String));
+      expect(response.body).not.toHaveProperty('tokenHash');
       expect(response.body).not.toHaveProperty('usedByUserId');
       expect(response.body).not.toHaveProperty('owner');
       expect(response.body).not.toHaveProperty('users');
@@ -263,7 +277,66 @@ describe('UsersController (e2e)', () => {
         .post('/api/v1/invitations')
         .set(authHeader(ownerA))
         .send({ gymId: gymB.id, email: pendingUser.email })
-        .expect(HttpStatus.UNAUTHORIZED);
+        .expect(HttpStatus.FORBIDDEN);
+    });
+
+    it('should reject duplicate pending invitations', async () => {
+      const invitationResponse = await request(app.getHttpServer())
+        .post('/api/v1/invitations')
+        .set(authHeader(ownerA))
+        .send({ gymId: gymA.id, email: pendingUser.email })
+        .expect(HttpStatus.CREATED);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/invitations')
+        .set(authHeader(ownerA))
+        .send({ gymId: gymA.id, email: pendingUser.email })
+        .expect(HttpStatus.CONFLICT);
+
+      await invitationRepository.delete(invitationResponse.body.id);
+    });
+
+    it('should cancel a pending invitation and reject its token', async () => {
+      const invitationResponse = await request(app.getHttpServer())
+        .post('/api/v1/invitations')
+        .set(authHeader(ownerA))
+        .send({ gymId: gymA.id, email: pendingUser.email })
+        .expect(HttpStatus.CREATED);
+
+      await request(app.getHttpServer())
+        .post(`/api/v1/invitations/${invitationResponse.body.id}/cancel`)
+        .set(authHeader(ownerA))
+        .expect(HttpStatus.OK);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/invitations/accept')
+        .set(authHeader(pendingUser))
+        .send({ invitationToken: invitationResponse.body.invitationToken })
+        .expect(HttpStatus.BAD_REQUEST);
+
+      await invitationRepository.delete(invitationResponse.body.id);
+    });
+
+    it('should not demote privileged users accepting student invitations', async () => {
+      const invitationResponse = await request(app.getHttpServer())
+        .post('/api/v1/invitations')
+        .set(authHeader(superAdmin))
+        .send({ gymId: gymA.id, email: teacher.email })
+        .expect(HttpStatus.CREATED);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/invitations/accept')
+        .set(authHeader(teacher))
+        .send({ invitationToken: invitationResponse.body.invitationToken })
+        .expect(HttpStatus.CONFLICT);
+
+      const unchangedTeacher = await userRepository.findOne({
+        where: { id: teacher.id },
+      });
+      expect(unchangedTeacher?.role).toBe(Role.TEACHER);
+      expect(unchangedTeacher?.gymId).toBe(gymA.id);
+
+      await invitationRepository.delete(invitationResponse.body.id);
     });
 
     it('should enroll a student via valid invitation token', async () => {
@@ -273,7 +346,7 @@ describe('UsersController (e2e)', () => {
         .send({ gymId: gymA.id, email: pendingUser.email })
         .expect(HttpStatus.CREATED);
 
-      const invitationToken = invitationResponse.body.id;
+      const invitationToken = invitationResponse.body.invitationToken;
       expect(invitationToken).toEqual(expect.any(String));
 
       const response = await request(app.getHttpServer())
@@ -287,13 +360,13 @@ describe('UsersController (e2e)', () => {
       assertNoForbiddenKeys(response.body);
 
       const usedInvitation = await invitationRepository.findOne({
-        where: { id: invitationToken },
+        where: { id: invitationResponse.body.id },
       });
       expect(usedInvitation?.status).toBe(InvitationStatus.USED);
       expect(usedInvitation?.usedByUserId).toBe(pendingUser.id);
 
       await userRepository.update(pendingUser.id, { gymId: null });
-      await invitationRepository.delete(invitationToken);
+      await invitationRepository.delete(invitationResponse.body.id);
     });
 
     it('returns an explicit safe response for user synchronization', async () => {
@@ -342,7 +415,7 @@ describe('UsersController (e2e)', () => {
         .send({ gymId: gymA.id, email: pendingUser.email })
         .expect(HttpStatus.CREATED);
 
-      const invitationToken = invitationResponse.body.id;
+      const invitationToken = invitationResponse.body.invitationToken;
 
       const wrongUser = createUser(Role.STUDENT, null);
       wrongUser.email = `${wrongUser.id}@other.com`;
@@ -355,17 +428,17 @@ describe('UsersController (e2e)', () => {
         .expect(HttpStatus.UNAUTHORIZED);
 
       await userRepository.delete(wrongUser.id);
-      await invitationRepository.delete(invitationToken);
+      await invitationRepository.delete(invitationResponse.body.id);
     });
 
-    it('should reject auto-assign with already used invitation', async () => {
+    it('should accept an already used invitation idempotently', async () => {
       const invitationResponse = await request(app.getHttpServer())
         .post('/api/v1/invitations')
         .set(authHeader(ownerA))
         .send({ gymId: gymA.id, email: pendingUser.email })
         .expect(HttpStatus.CREATED);
 
-      const invitationToken = invitationResponse.body.id;
+      const invitationToken = invitationResponse.body.invitationToken;
 
       await request(app.getHttpServer())
         .post('/api/v1/users/auto-assign-student')
@@ -377,10 +450,10 @@ describe('UsersController (e2e)', () => {
         .post('/api/v1/users/auto-assign-student')
         .set(authHeader(pendingUser))
         .send({ invitationToken })
-        .expect(HttpStatus.BAD_REQUEST);
+        .expect(HttpStatus.OK);
 
       await userRepository.update(pendingUser.id, { gymId: null });
-      await invitationRepository.delete(invitationToken);
+      await invitationRepository.delete(invitationResponse.body.id);
     });
 
     it('should reject auto-assign with expired invitation', async () => {
@@ -390,11 +463,11 @@ describe('UsersController (e2e)', () => {
         .send({ gymId: gymA.id, email: pendingUser.email, expiresInHours: 1 })
         .expect(HttpStatus.CREATED);
 
-      const invitationToken = invitationResponse.body.id;
+      const invitationToken = invitationResponse.body.invitationToken;
 
       // Forzar expiración editando directamente en base de datos
       const invitation = await invitationRepository.findOne({
-        where: { id: invitationToken },
+        where: { id: invitationResponse.body.id },
       });
       if (invitation) {
         invitation.expiresAt = new Date(Date.now() - 60 * 60 * 1000);
@@ -407,7 +480,7 @@ describe('UsersController (e2e)', () => {
         .send({ invitationToken })
         .expect(HttpStatus.BAD_REQUEST);
 
-      await invitationRepository.delete(invitationToken);
+      await invitationRepository.delete(invitationResponse.body.id);
     });
   });
 });

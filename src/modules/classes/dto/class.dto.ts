@@ -1,7 +1,7 @@
-import { Transform } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
   IsDateString,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsPositive,
   IsString,
@@ -36,9 +36,9 @@ export class CreateClassDto {
   })
   endTime: string;
 
-  @IsNumber()
+  @IsInt()
   @IsPositive()
-  @Transform(({ value }) => parseInt(value))
+  @Type(() => Number)
   capacity: number;
 }
 
@@ -69,9 +69,9 @@ export class UpdateClassDto {
   @IsOptional()
   endTime?: string;
 
-  @IsNumber()
+  @IsInt()
   @IsPositive()
-  @Transform(({ value }) => parseInt(value))
+  @Type(() => Number)
   @IsOptional()
   capacity?: number;
 }
@@ -90,14 +90,14 @@ export class FilterClassDto {
   gymId?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Transform(({ value }) => parseInt(value))
+  @IsInt()
+  @Type(() => Number)
   @Min(1)
   page?: number = 1;
 
   @IsOptional()
-  @IsNumber()
-  @Transform(({ value }) => parseInt(value))
+  @IsInt()
+  @Type(() => Number)
   @Min(1)
   @Max(100)
   limit?: number = 10;

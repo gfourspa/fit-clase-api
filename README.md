@@ -77,7 +77,7 @@ El prefijo global es `/api/v1`.
 
 | Método | Endpoint                            | Descripción                                                                    | Acceso                      |
 | ------ | ----------------------------------- | ------------------------------------------------------------------------------ | --------------------------- |
-| POST   | `/api/v1/users/auto-assign-student` | Asigna el rol `STUDENT` usando un token de invitación.                         | Autenticado                 |
+| POST   | `/api/v1/users/auto-assign-student` | Alias compatible para aceptar una invitacion.                                 | Autenticado                 |
 | POST   | `/api/v1/users/assign-role`         | Asigna roles a otros usuarios.                                                 | `SUPER_ADMIN`               |
 | GET    | `/api/v1/users/me`                  | Perfil del usuario autenticado.                                                | Autenticado                 |
 | POST   | `/api/v1/users/sync`                | Sincroniza el usuario autenticado con la base de datos.                        | Autenticado                 |
@@ -130,6 +130,9 @@ El prefijo global es `/api/v1`.
 | Método | Endpoint              | Descripción                                                                            | Acceso                     |
 | ------ | --------------------- | -------------------------------------------------------------------------------------- | -------------------------- |
 | POST   | `/api/v1/invitations` | Crear invitación para unirse a un gimnasio. Body: `{ gymId, email, expiresInHours? }`. | `OWNER_GYM`, `SUPER_ADMIN` |
+| POST   | `/api/v1/invitations/accept` | Aceptar invitacion. Body: `{ invitationToken }`. | Autenticado con email verificado |
+| POST   | `/api/v1/invitations/:id/cancel` | Cancelar una invitacion pendiente. | `OWNER_GYM`, `SUPER_ADMIN` |
+| POST   | `/api/v1/invitations/:id/resend` | Invalidar el token anterior y reenviar uno nuevo. | `OWNER_GYM`, `SUPER_ADMIN` |
 
 Para más detalles, consulta los controladores en `src/modules/*/*.controller.ts` o la documentación Swagger en `/api/docs` cuando la app esté ejecutando.
 
@@ -158,10 +161,15 @@ Authorization: Bearer <FirebaseIdToken>
 ### Flujo de inscripción de estudiantes
 
 1. Un `OWNER_GYM` o `SUPER_ADMIN` crea una invitación:  
-   `POST /api/v1/invitations` → devuelve `{ invitationToken }`.
+   `POST /api/v1/invitations` devuelve un `invitationToken` una sola vez e intenta enviarlo por email.
 2. El estudiante se registra en Firebase Auth y envía el token de invitación:  
-   `POST /api/v1/users/auto-assign-student` con body `{ invitationToken }`.
-3. El servidor valida que el email del token Firebase coincida con el email de la invitación y asigna el rol `STUDENT` con el `gymId` correspondiente.
+   `POST /api/v1/invitations/accept` con body `{ invitationToken }`.
+3. El servidor exige email de Firebase verificado, bloquea la invitacion y crea/asigna el usuario dentro de una transaccion.
+4. El cliente debe refrescar su Firebase ID token cuando `claimsUpdated` sea `true`.
+
+### Email de invitaciones
+
+El envio usa el plan gratuito de [Resend](https://resend.com). Configura `RESEND_API_KEY`, `INVITATION_EMAIL_FROM` con un remitente verificado e `INVITATION_ACCEPT_URL`. Si faltan credenciales, la invitacion se crea y la respuesta devuelve `emailSent: false` junto con el token y enlace para entrega manual.
 
 > **Nota de seguridad:** el aislamiento por `gymId` se implementa en la lógica de aplicación. Se recomienda añadir políticas **RLS** en PostgreSQL como defensa en profundidad.
 

@@ -36,12 +36,46 @@ function validateRequiredConfig(configService: ConfigService): void {
   }
 }
 
+function validateInvitationConfig(configService: ConfigService): void {
+  const acceptUrl = configService.get<string>('INVITATION_ACCEPT_URL');
+  const isProduction = configService.get('NODE_ENV') === 'production';
+
+  if (!acceptUrl) {
+    if (isProduction) {
+      console.error(
+        'INVITATION_ACCEPT_URL is required in production. Example: https://api.example.com/api/v1/invitations/accept',
+      );
+      process.exit(1);
+    }
+    console.warn(
+      'INVITATION_ACCEPT_URL not set. Invitation emails will use a placeholder URL.',
+    );
+    return;
+  }
+
+  try {
+    const url = new URL(acceptUrl);
+    if (url.protocol !== 'https:' && isProduction) {
+      console.error(
+        'INVITATION_ACCEPT_URL must use HTTPS in production.',
+      );
+      process.exit(1);
+    }
+  } catch {
+    console.error(
+      `INVITATION_ACCEPT_URL is not a valid URL: ${acceptUrl}`,
+    );
+    process.exit(1);
+  }
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   // Obtener configuración y validar variables requeridas antes de iniciar
   const configService = app.get(ConfigService);
   validateRequiredConfig(configService);
+  validateInvitationConfig(configService);
 
   // Inicializar Firebase Admin SDK
   try {
