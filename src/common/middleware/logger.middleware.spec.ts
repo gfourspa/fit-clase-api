@@ -24,7 +24,7 @@ describe('LoggerMiddleware', () => {
     const callbacks: Record<string, () => void> = {};
     const res = {
       statusCode: 200,
-      on: jest.fn((event: string, cb: () => void) => {
+      once: jest.fn((event: string, cb: () => void) => {
         callbacks[event] = cb;
         return res;
       }),
@@ -51,7 +51,7 @@ describe('LoggerMiddleware', () => {
     const callbacks: Record<string, () => void> = {};
     const res = {
       statusCode: 200,
-      on: jest.fn((event: string, cb: () => void) => {
+      once: jest.fn((event: string, cb: () => void) => {
         callbacks[event] = cb;
         return res;
       }),

@@ -79,22 +79,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
       const stack = exception instanceof Error ? exception.stack : undefined;
-      this.logger.error(payload, stack);
+      this.logger.error(JSON.stringify(payload), stack);
       return;
     }
 
     if (statusCode === HttpStatus.FORBIDDEN || statusCode === 429) {
-      this.logger.warn(payload);
+      this.logger.warn(JSON.stringify(payload));
       return;
     }
 
     if (statusCode === HttpStatus.NOT_FOUND && !path.startsWith('/api/v1/')) {
       // Rutas públicas desconocidas (scanners/bots): reducir ruido.
-      this.logger.debug(payload);
+      this.logger.debug(JSON.stringify(payload));
       return;
     }
 
-    this.logger.log(payload);
+    this.logger.log(JSON.stringify(payload));
   }
 
   private sanitizeUserAgent(

@@ -60,13 +60,13 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(logSpy).toHaveBeenCalledTimes(1);
-    const payload = logSpy.mock.calls[0][0];
+    const payload = JSON.parse(logSpy.mock.calls[0][0]);
     expect(payload.path).toBe('/api/v1/classes');
     expect(payload.path).not.toContain('?');
-    expect(JSON.stringify(payload)).not.toContain('token');
-    expect(JSON.stringify(payload)).not.toContain('secret');
-    expect(JSON.stringify(payload)).not.toContain('apiKey');
-    expect(JSON.stringify(payload)).not.toContain('Bearer');
+    expect(logSpy.mock.calls[0][0]).not.toContain('token');
+    expect(logSpy.mock.calls[0][0]).not.toContain('secret');
+    expect(logSpy.mock.calls[0][0]).not.toContain('apiKey');
+    expect(logSpy.mock.calls[0][0]).not.toContain('Bearer');
   });
 
   it('should not include request headers in logs', () => {
@@ -80,12 +80,11 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(logSpy).toHaveBeenCalledTimes(1);
-    const payload = logSpy.mock.calls[0][0];
-    const payloadJson = JSON.stringify(payload);
-    expect(payloadJson).not.toContain('authorization');
-    expect(payloadJson).not.toContain('Bearer');
-    expect(payloadJson).not.toContain('cookie');
-    expect(payloadJson).not.toContain('session');
+    const logLine = logSpy.mock.calls[0][0] as string;
+    expect(logLine).not.toContain('authorization');
+    expect(logLine).not.toContain('Bearer');
+    expect(logLine).not.toContain('cookie');
+    expect(logLine).not.toContain('session');
   });
 
   it('should log 404 public unknown routes as debug', () => {
@@ -99,7 +98,7 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(debugSpy).toHaveBeenCalledTimes(1);
-    const payload = debugSpy.mock.calls[0][0];
+    const payload = JSON.parse(debugSpy.mock.calls[0][0]);
     expect(payload.statusCode).toBe(HttpStatus.NOT_FOUND);
     expect(payload.path).toBe('/wp-admin');
     expect(warnSpy).not.toHaveBeenCalled();
@@ -117,7 +116,7 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(logSpy).toHaveBeenCalledTimes(1);
-    const payload = logSpy.mock.calls[0][0];
+    const payload = JSON.parse(logSpy.mock.calls[0][0]);
     expect(payload.statusCode).toBe(HttpStatus.NOT_FOUND);
     expect(payload.path).toBe('/api/v1/non-existing');
     expect(debugSpy).not.toHaveBeenCalled();
@@ -132,7 +131,7 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(logSpy).toHaveBeenCalledTimes(1);
-    expect(logSpy.mock.calls[0][0].statusCode).toBe(HttpStatus.BAD_REQUEST);
+    expect(JSON.parse(logSpy.mock.calls[0][0]).statusCode).toBe(HttpStatus.BAD_REQUEST);
     expect(warnSpy).not.toHaveBeenCalled();
     expect(errorSpy).not.toHaveBeenCalled();
   });
@@ -144,7 +143,7 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(logSpy).toHaveBeenCalledTimes(1);
-    expect(logSpy.mock.calls[0][0].statusCode).toBe(HttpStatus.UNAUTHORIZED);
+    expect(JSON.parse(logSpy.mock.calls[0][0]).statusCode).toBe(HttpStatus.UNAUTHORIZED);
     expect(warnSpy).not.toHaveBeenCalled();
     expect(errorSpy).not.toHaveBeenCalled();
   });
@@ -156,7 +155,7 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy.mock.calls[0][0].statusCode).toBe(HttpStatus.FORBIDDEN);
+    expect(JSON.parse(warnSpy.mock.calls[0][0]).statusCode).toBe(HttpStatus.FORBIDDEN);
     expect(logSpy).not.toHaveBeenCalled();
     expect(errorSpy).not.toHaveBeenCalled();
   });
@@ -171,7 +170,7 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy.mock.calls[0][0].statusCode).toBe(
+    expect(JSON.parse(warnSpy.mock.calls[0][0]).statusCode).toBe(
       HttpStatus.TOO_MANY_REQUESTS,
     );
     expect(logSpy).not.toHaveBeenCalled();
@@ -185,7 +184,8 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(errorSpy).toHaveBeenCalledTimes(1);
-    const [payload, stack] = errorSpy.mock.calls[0];
+    const [payloadJson, stack] = errorSpy.mock.calls[0];
+    const payload = JSON.parse(payloadJson);
     expect(payload.statusCode).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
     expect(payload.path).toBe('/api/v1/classes');
     expect(stack).toContain('Unexpected failure');
@@ -224,7 +224,7 @@ describe('AllExceptionsFilter', () => {
     filter.catch(exception, createHost(request, createResponse()));
 
     expect(debugSpy).toHaveBeenCalledTimes(1);
-    const payload = debugSpy.mock.calls[0][0];
+    const payload = JSON.parse(debugSpy.mock.calls[0][0]);
     expect(payload.userAgent).toHaveLength(203);
     expect(payload.userAgent).toMatch(/^a{200}\.\.\.$/);
   });
