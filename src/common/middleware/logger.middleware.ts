@@ -11,6 +11,8 @@ export class LoggerMiddleware implements NestMiddleware {
     const path = req.originalUrl.split('?')[0];
     const start = Date.now();
 
+    // Health checks and keep-alive connections may reuse response objects;
+    // remove the listener after the first finish event and avoid the warning.
     res.once('finish', () => {
       const duration = Date.now() - start;
       const { statusCode } = res;

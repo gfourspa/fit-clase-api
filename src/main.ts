@@ -188,20 +188,11 @@ async function bootstrap() {
     });
   }
 
-  // Render requiere que la aplicación escuche en 0.0.0.0
-  await app.listen(port, '0.0.0.0');
-
   // Graceful shutdown para SIGTERM/SIGINT
   app.enableShutdownHooks();
 
-  const gracefulShutdown = async (signal: string) => {
-    console.log(`Received ${signal}. Closing HTTP server...`);
-    await app.close();
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  // Render requiere que la aplicación escuche en 0.0.0.0
+  await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 Servidor ejecutándose en: http://localhost:${port}`);
   if (configService.get('NODE_ENV') !== 'production') {
